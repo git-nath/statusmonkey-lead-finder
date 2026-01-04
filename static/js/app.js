@@ -1,6 +1,10 @@
 // StatusMonkey Lead Finder v1.5 - Frontend JavaScript
 
 let allLeads = [];
+// TASK 26: Status tracking variables
+let currentStatusFilter = "all";
+let statusCounts = {};
+
 let currentFilter = "all";
 let templates = {};
 
@@ -16,6 +20,7 @@ async function loadLeads() {
   try {
     const response = await fetch("/api/leads");
     allLeads = await response.json();
+    updateStatusCounts();
     displayLeads(allLeads);
   } catch (error) {
     console.error("Error loading leads:", error);
@@ -57,6 +62,13 @@ async function loadTemplates() {
 // Display leads
 function displayLeads(leads) {
   const container = document.getElementById("leads-container");
+  // TASK 26: Filter by status tab
+  if (currentStatusFilter !== "all") {
+    leads = leads.filter((lead) => {
+      const leadStatus = lead.status || "unread";
+      return leadStatus === currentStatusFilter;
+    });
+  }
 
   if (leads.length === 0) {
     container.innerHTML = `
@@ -409,4 +421,86 @@ function escapeHtml(text) {
   const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
+}
+// ============================================
+// TASK 26: Filter leads by status tab
+// ============================================
+function filterByStatus(status) {
+  currentStatusFilter = status;
+
+  // Update active tab styling
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.classList.remove("active");
+  });
+  const activeBtn = document.querySelector(`[data-status="${status}"]`);
+  if (activeBtn) {
+    activeBtn.classList.add("active");
+  }
+
+  // Re-render leads with new filter
+  displayLeads(allLeads);
+}
+// ============================================
+// TASK 26: Count leads per status
+// ============================================
+function updateStatusCounts() {
+  statusCounts = {
+    all: allLeads.length,
+    unread: 0,
+    read: 0,
+    contacted: 0,
+    replied: 0,
+    converted: 0,
+    ignored: 0,
+  };
+
+  // Count each status
+  allLeads.forEach((lead) => {
+    const status = lead.status || "unread";
+    if (statusCounts[status] !== undefined) {
+      statusCounts[status]++;
+    }
+  });
+
+  // Update tab badges
+  Object.keys(statusCounts).forEach((status) => {
+    const badge = document.getElementById(`count-${status}`);
+    if (badge) {
+      badge.textContent = statusCounts[status];
+    }
+  });
+}
+// ============================================
+// TASK 26: Update lead status via backend
+// ============================================
+async function updateLeadStatus(leadId, newStatus) {
+  try {
+    const response = await fetch("/update_status", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        lead_id: leadId,
+        status: newStatus,
+      }),
+    });
+
+    if (response.ok) {
+      // Update lead in memory
+      const lead = allLeads.find((l) => l.id === leadId);
+      if (lead) {
+        lead.status = newStatus;
+      }
+
+      // Refresh counts and display
+      updateStatusCounts();
+      displayLeads(allLeads);
+
+      showNotification(`✅ Lead marked as ${newStatus}!`);
+    }
+  } catch (error) {
+    console.error("Error updating status:", error);
+    showError("Failed to update status");
+  }
 }

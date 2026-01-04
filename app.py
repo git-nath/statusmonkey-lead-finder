@@ -320,6 +320,38 @@ def get_subreddits():
     """Get monitored subreddits"""
     data = load_leads()
     return jsonify(data.get('subreddits', TARGET_SUBREDDITS))
+# ADD THIS NEW ENDPOINT RIGHT BEFORE if __name__ == '__main__':
+
+# ============================================
+# TASK 26: Status update endpoint
+# Purpose: Allow frontend to update lead status
+# ============================================
+@app.route('/update_status', methods=['POST'])
+def update_status():
+    try:
+        data = request.json
+        lead_id = data.get('lead_id')
+        new_status = data.get('status')
+        
+        # Load current leads
+        with open('data/leads.json', 'r') as f:
+            all_leads = json.load(f)
+        
+        # Find and update the lead
+        for lead in all_leads:
+            if lead.get('id') == lead_id:
+                lead['status'] = new_status
+                # Add timestamp for when status changed
+                lead['status_updated_at'] = datetime.now().isoformat()
+                break
+        
+        # Save updated leads
+        with open('data/leads.json', 'w') as f:
+            json.dump(all_leads, f, indent=2)
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     print("🚀 StatusMonkey Lead Finder v1.5 Starting...")
