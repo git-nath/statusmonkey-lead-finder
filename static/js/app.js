@@ -1,12 +1,14 @@
-// StatusMonkey Lead Finder - Frontend JavaScript
+// StatusMonkey Lead Finder v1.5 - Frontend JavaScript
 
 let allLeads = [];
 let currentFilter = "all";
+let templates = {};
 
 // Initialize on page load
 document.addEventListener("DOMContentLoaded", function () {
   loadLeads();
   loadStats();
+  loadTemplates();
 });
 
 // Load all leads
@@ -28,13 +30,27 @@ async function loadStats() {
     const stats = await response.json();
 
     document.getElementById("stat-total").textContent = stats.total;
+    document.getElementById("stat-emergency").textContent =
+      stats.emergency || 0;
     document.getElementById("stat-hot").textContent = stats.hot;
     document.getElementById("stat-warm").textContent = stats.warm;
     document.getElementById("stat-cold").textContent = stats.cold;
     document.getElementById("stat-contacted").textContent = stats.contacted;
     document.getElementById("stat-converted").textContent = stats.converted;
+    document.getElementById("stat-revenue").textContent =
+      "$" + (stats.revenue || 0);
   } catch (error) {
     console.error("Error loading stats:", error);
+  }
+}
+
+// Load reply templates
+async function loadTemplates() {
+  try {
+    const response = await fetch("/api/templates");
+    templates = await response.json();
+  } catch (error) {
+    console.error("Error loading templates:", error);
   }
 }
 
@@ -65,6 +81,9 @@ function createLeadCard(lead) {
           lead.status
         }">${lead.status.toUpperCase()}</span>`
       : "";
+  const convertedBadge = lead.converted
+    ? `<span class="badge badge-converted">✓ CONVERTED</span>`
+    : "";
 
   return `
         <div class="lead-card ${priorityClass}" data-id="${lead.id}">
@@ -77,6 +96,7 @@ function createLeadCard(lead) {
     lead.score
   }</span>
                     ${statusBadge}
+                    ${convertedBadge}
                     ${
                       lead.status === "new"
                         ? '<span class="badge badge-new">NEW</span>'
@@ -100,7 +120,7 @@ function createLeadCard(lead) {
             }
             
             ${
-              lead.matched_keywords.length > 0
+              lead.matched_keywords && lead.matched_keywords.length > 0
                 ? `
                 <div class="lead-keywords">
                     <strong>🎯 Matched Keywords:</strong>
@@ -115,20 +135,35 @@ function createLeadCard(lead) {
                 : ""
             }
             
+            ${
+              lead.suggested_template
+                ? `
+                <div class="suggested-template">
+                    <strong>💡 Suggested Reply:</strong> ${lead.suggested_template}
+                </div>
+            `
+                : ""
+            }
+            
             <div class="lead-actions">
                 <button class="btn-small btn-link" onclick="openPost('${
                   lead.url
                 }')">
                     🔗 Open Post
                 </button>
+                <button class="btn-small btn-template" onclick="showTemplate('${
+                  lead.id
+                }', '${lead.suggested_template || "recommendation"}')">
+                    📝 Get Reply Template
+                </button>
                 <button class="btn-small btn-contacted" onclick="updateStatus('${
                   lead.id
                 }', 'contacted')">
                     📧 Mark Contacted
                 </button>
-                <button class="btn-small btn-converted" onclick="updateStatus('${
+                <button class="btn-small btn-converted" onclick="markConverted('${
                   lead.id
-                }', 'converted')">
+                }')">
                     💰 Mark Converted
                 </button>
                 <button class="btn-small btn-ignore" onclick="updateStatus('${
@@ -139,6 +174,47 @@ function createLeadCard(lead) {
             </div>
         </div>
     `;
+}
+
+// Show reply template modal
+function showTemplate(leadId, templateType) {
+  const lead = allLeads.find((l) => l.id === leadId);
+  if (!lead) return;
+
+  let templateText = templates[templateType] || templates["recommendation"];
+
+  // Replace [COMPETITOR] placeholder if needed
+  if (templateType === "competitor_complaint") {
+    const competitorMatch = lead.matched_keywords.find((k) =>
+      k.includes("competitor:")
+    );
+    if (competitorMatch) {
+      const competitor = competitorMatch.split(":")[1];
+      templateText = templateText.replace("[COMPETITOR]", competitor);
+    }
+  }
+
+  document.getElementById("template-text").value = templateText;
+  document.getElementById("template-modal").style.display = "flex";
+}
+
+// Close template modal
+function closeTemplateModal() {
+  document.getElementById("template-modal").style.display = "none";
+}
+
+// Copy template to clipboard
+function copyTemplate() {
+  const text = document.getElementById("template-text").value;
+  navigator.clipboard
+    .writeText(text)
+    .then(() => {
+      showNotification("✅ Template copied to clipboard!");
+      closeTemplateModal();
+    })
+    .catch((err) => {
+      showError("Failed to copy to clipboard");
+    });
 }
 
 // Scan Reddit for new leads
@@ -190,12 +266,39 @@ async function updateStatus(leadId, status) {
   }
 }
 
+// Mark lead as converted
+async function markConverted(leadId) {
+  try {
+    const response = await fetch(`/api/lead/${leadId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status: "converted",
+        converted: true,
+      }),
+    });
+
+    if (response.ok) {
+      showNotification("🎉 Lead marked as CONVERTED! +$5.99 revenue");
+      loadLeads();
+      loadStats();
+    }
+  } catch (error) {
+    console.error("Error marking converted:", error);
+    showError("Failed to mark as converted");
+  }
+}
+
 // Filter leads
 function filterLeads(filter) {
   currentFilter = filter;
   let filtered = allLeads;
 
-  if (filter === "hot") {
+  if (filter === "emergency") {
+    filtered = allLeads.filter((lead) => lead.priority === "emergency");
+  } else if (filter === "hot") {
     filtered = allLeads.filter((lead) => lead.priority === "hot");
   } else if (filter === "warm") {
     filtered = allLeads.filter((lead) => lead.priority === "warm");
@@ -222,7 +325,9 @@ function searchLeads() {
       lead.title.toLowerCase().includes(searchTerm) ||
       lead.text.toLowerCase().includes(searchTerm) ||
       lead.author.toLowerCase().includes(searchTerm) ||
-      lead.subreddit.toLowerCase().includes(searchTerm)
+      lead.subreddit.toLowerCase().includes(searchTerm) ||
+      (lead.matched_keywords &&
+        lead.matched_keywords.some((k) => k.toLowerCase().includes(searchTerm)))
   );
 
   displayLeads(filtered);
@@ -244,6 +349,8 @@ function exportLeads() {
     "Comments",
     "Priority",
     "Status",
+    "Converted",
+    "Revenue",
     "URL",
     "Created",
   ];
@@ -255,6 +362,8 @@ function exportLeads() {
     lead.comments,
     lead.priority,
     lead.status,
+    lead.converted ? "Yes" : "No",
+    lead.revenue || 0,
     lead.url,
     lead.created_readable,
   ]);

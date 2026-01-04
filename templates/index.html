@@ -3,15 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>StatusMonkey Lead Finder</title>
+    <title>StatusMonkey Lead Finder v1.5</title>
     <link rel="stylesheet" href="/static/css/terminal.css" />
   </head>
   <body>
     <div class="container">
       <!-- Header -->
       <header class="terminal-header">
-        <h1>⚡ STATUSMONKEY LEAD FINDER v1.0</h1>
-        <p class="subtitle">Reddit Lead Generation & Competitor Monitoring</p>
+        <h1>⚡ STATUSMONKEY LEAD FINDER v1.5</h1>
+        <p class="subtitle">
+          Reddit Lead Generation & Competitor Monitoring | Enhanced Scoring &
+          Templates
+        </p>
       </header>
 
       <!-- Stats Dashboard -->
@@ -19,6 +22,10 @@
         <div class="stat-card">
           <div class="stat-label">Total Leads</div>
           <div class="stat-value" id="stat-total">0</div>
+        </div>
+        <div class="stat-card emergency">
+          <div class="stat-label">🚨 Emergency</div>
+          <div class="stat-value" id="stat-emergency">0</div>
         </div>
         <div class="stat-card hot">
           <div class="stat-label">🔥 Hot</div>
@@ -40,6 +47,10 @@
           <div class="stat-label">💰 Converted</div>
           <div class="stat-value" id="stat-converted">0</div>
         </div>
+        <div class="stat-card revenue">
+          <div class="stat-label">💵 Revenue</div>
+          <div class="stat-value" id="stat-revenue">$0</div>
+        </div>
       </section>
 
       <!-- Action Bar -->
@@ -49,6 +60,9 @@
         </button>
         <button class="btn btn-secondary" onclick="filterLeads('all')">
           📋 All Leads
+        </button>
+        <button class="btn btn-secondary" onclick="filterLeads('emergency')">
+          🚨 Emergency
         </button>
         <button class="btn btn-secondary" onclick="filterLeads('hot')">
           🔥 Hot Only
@@ -74,13 +88,34 @@
       <!-- Loading Indicator -->
       <div id="loading" class="loading" style="display: none">
         <div class="spinner"></div>
-        <p>Scanning Reddit for leads...</p>
+        <p>Scanning Reddit for StatusMonkey leads...</p>
       </div>
 
       <!-- Leads Container -->
       <section id="leads-container" class="leads-container">
         <!-- Leads will be dynamically loaded here -->
       </section>
+    </div>
+
+    <!-- Reply Template Modal -->
+    <div id="template-modal" class="modal" style="display: none">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>📝 Reply Template</h2>
+          <button class="modal-close" onclick="closeTemplateModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <textarea id="template-text" rows="8"></textarea>
+          <div class="modal-actions">
+            <button class="btn btn-primary" onclick="copyTemplate()">
+              📋 Copy to Clipboard
+            </button>
+            <button class="btn btn-secondary" onclick="closeTemplateModal()">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script src="/static/js/app.js"></script>
