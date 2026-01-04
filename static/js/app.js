@@ -660,3 +660,112 @@ function quickAction(action) {
     closeQuickOverlay();
   }
 }
+
+// ============================================
+// SUBREDDIT MANAGEMENT - v1.9
+// ============================================
+
+function openSubredditSettings() {
+  loadSubreddits();
+  document.getElementById("subreddit-modal").style.display = "flex";
+}
+
+function closeSubredditModal() {
+  document.getElementById("subreddit-modal").style.display = "none";
+}
+
+async function loadSubreddits() {
+  try {
+    const response = await fetch("/api/subreddits");
+    const subreddits = await response.json();
+
+    const listContainer = document.getElementById("subreddit-list");
+
+    if (subreddits.length === 0) {
+      listContainer.innerHTML =
+        '<p style="color: #888;">No subreddits configured</p>';
+      return;
+    }
+
+    listContainer.innerHTML = subreddits
+      .map(
+        (sub) => `
+      <div class="subreddit-item">
+        <div class="subreddit-info">
+          <span class="subreddit-name">r/${sub.name}</span>
+          <span class="subreddit-priority ${
+            sub.priority
+          }">${sub.priority.replace("_", " ")}</span>
+        </div>
+        <button class="btn-delete" onclick="deleteSubreddit('${sub.name}')">
+          ❌ Remove
+        </button>
+      </div>
+    `
+      )
+      .join("");
+  } catch (error) {
+    console.error("Error loading subreddits:", error);
+    showError("Failed to load subreddits");
+  }
+}
+
+async function addSubreddit() {
+  const input = document.getElementById("new-subreddit-input");
+  const subredditName = input.value.trim();
+
+  if (!subredditName) {
+    showError("Please enter a subreddit name");
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/subreddits", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: subredditName,
+        priority: "medium_priority",
+      }),
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      showNotification(`✅ ${result.message}`);
+      input.value = "";
+      loadSubreddits();
+    } else {
+      showError(result.error);
+    }
+  } catch (error) {
+    console.error("Error adding subreddit:", error);
+    showError("Failed to add subreddit");
+  }
+}
+
+async function deleteSubreddit(name) {
+  if (!confirm(`Remove r/${name} from tracking?`)) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/subreddits/${name}`, {
+      method: "DELETE",
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      showNotification(`✅ ${result.message}`);
+      loadSubreddits();
+    } else {
+      showError(result.error);
+    }
+  } catch (error) {
+    console.error("Error deleting subreddit:", error);
+    showError("Failed to delete subreddit");
+  }
+}

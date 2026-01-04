@@ -2,15 +2,30 @@ from flask import Flask, render_template, jsonify, request
 import requests
 import time
 import json
+import sqlite3
 from datetime import datetime
 import os
 
 app = Flask(__name__)
 
-# Data file to store leads
-DATA_FILE = 'data/leads.json'
+# ============================================
+# DATABASE HELPER FUNCTIONS
+# ============================================
 
-# ENHANCED KEYWORDS for StatusMonkey.co lead generation
+def get_db_connection():
+    """Create database connection with Row factory for dict-like access"""
+    conn = sqlite3.connect('leads.db')
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def dict_from_row(row):
+    """Convert sqlite3.Row to dictionary"""
+    return dict(zip(row.keys(), row))
+
+# ============================================
+# KEYWORDS & SCORING (Unchanged)
+# ============================================
+
 KEYWORDS = {
     'urgent_leads': [
         'my website is down', 'site went down', 'server is down',
@@ -41,39 +56,6 @@ KEYWORDS = {
     ]
 }
 
-# Target subreddits with priority
-TARGET_SUBREDDITS = {
-    'high_priority': ['webdev', 'SaaS', 'startups', 'Entrepreneur'],
-    'medium_priority': ['selfhosted', 'sysadmin', 'webhosting', 'aws', 'devops']
-}
-
-# Reply templates
-REPLY_TEMPLATES = {
-    'downtime_issue': """Hey! I use StatusMonkey.co for this - it checks every 60 seconds and sends SMS alerts instantly. It's only $5.99/mo (free during beta). Has saved me multiple times! Here's my referral link: statusmonkey.co/?ref=reddit""",
-    
-    'competitor_complaint': """If you think [COMPETITOR] is expensive, check out StatusMonkey. $5.99/mo with 60-second checks, SMS alerts, AND a status page included. Currently free during beta: statusmonkey.co/?ref=reddit""",
-    
-    'recommendation': """I've been using StatusMonkey and it's been solid. 60-second monitoring, instant SMS/email alerts, and you get a status page. Best part? It's $5.99/mo and free during beta. Worth checking out: statusmonkey.co/?ref=reddit"""
-}
-
-def load_leads():
-    """Load leads from JSON file"""
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    return {
-        'leads': [], 
-        'keywords': KEYWORDS, 
-        'subreddits': TARGET_SUBREDDITS,
-        'templates': REPLY_TEMPLATES
-    }
-
-def save_leads(data):
-    """Save leads to JSON file"""
-    os.makedirs('data', exist_ok=True)
-    with open(DATA_FILE, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-
 def score_lead(post):
     """Enhanced lead scoring for StatusMonkey"""
     text = (post['title'] + ' ' + post.get('text', '')).lower()
@@ -82,7 +64,7 @@ def score_lead(post):
     priority = 'cold'
     suggested_template = 'recommendation'
     
-    # EMERGENCY: Site is DOWN right now! (HOTTEST LEADS!)
+    # EMERGENCY: Site is DOWN right now!
     for keyword in KEYWORDS['urgent_leads']:
         if keyword in text:
             score += 50
@@ -90,7 +72,7 @@ def score_lead(post):
             priority = 'emergency'
             suggested_template = 'downtime_issue'
     
-    # Competitor complaints (Ready to switch!)
+    # Competitor complaints
     for keyword in KEYWORDS['competitor_complaints']:
         if keyword in text:
             score += 30
@@ -117,7 +99,7 @@ def score_lead(post):
             score += 10
             matched_keywords.append(f"👀competitor:{competitor}")
     
-    # Budget keywords (Perfect for $5.99 pricing!)
+    # Budget keywords
     budget_keywords = ['cheap', 'affordable', 'budget', 'free', 'expensive']
     for keyword in budget_keywords:
         if keyword in text:
@@ -141,10 +123,14 @@ def score_lead(post):
         'suggested_template': suggested_template
     }
 
+# ============================================
+# REDDIT SCRAPING FUNCTIONS
+# ============================================
+
 def fetch_reddit_posts(subreddit, limit=50):
     """Fetch posts from a subreddit"""
     url = f'https://www.reddit.com/r/{subreddit}/new/.json?limit={limit}'
-    headers = {'User-Agent': 'StatusMonkeyFinder/1.5'}
+    headers = {'User-Agent': 'StatusMonkeyFinder/1.9'}
     
     try:
         response = requests.get(url, headers=headers, timeout=10)
@@ -175,22 +161,25 @@ def fetch_reddit_posts(subreddit, limit=50):
 
 def scan_reddit():
     """Scan Reddit for new leads"""
-    data = load_leads()
-    existing_ids = {lead['id'] for lead in data['leads']}
-    new_leads = []
+    conn = get_db_connection()
+    c = conn.cursor()
     
-    # Scan high priority subreddits (handle both old and new format)
-    subreddits_data = data.get('subreddits', TARGET_SUBREDDITS)
-    if isinstance(subreddits_data, dict):
-        all_subreddits = (
-            subreddits_data.get('high_priority', []) + 
-            subreddits_data.get('medium_priority', [])
-        )
-    else:
-        # Old format - just use the list
-        all_subreddits = subreddits_data
+    # Get active subreddits from database
+    c.execute('SELECT name FROM subreddits WHERE active = 1')
+    subreddits = [row['name'] for row in c.fetchall()]
     
-    for subreddit in all_subreddits:
+    if not subreddits:
+        conn.close()
+        print("⚠️ No subreddits configured!")
+        return 0
+    
+    # Get existing lead IDs
+    c.execute('SELECT id FROM leads')
+    existing_ids = {row['id'] for row in c.fetchall()}
+    
+    new_leads = 0
+    
+    for subreddit in subreddits:
         print(f"Scanning r/{subreddit}...")
         posts = fetch_reddit_posts(subreddit, limit=50)
         
@@ -203,24 +192,42 @@ def scan_reddit():
             lead_info = score_lead(post)
             
             if lead_info['score'] > 0:
-                lead = {
-                    **post,
-                    **lead_info,
-                    'status': 'new',
-                    'notes': '',
-                    'replied_at': None,
-                    'converted': False,
-                    'revenue': 0,
-                    'found_at': datetime.now().isoformat()
-                }
-                new_leads.append(lead)
-                data['leads'].insert(0, lead)  # Add to beginning
+                # Insert lead into database
+                c.execute('''
+                    INSERT INTO leads (
+                        id, title, author, subreddit, score, comments, url, text,
+                        created, created_readable, priority, matched_keywords,
+                        suggested_template, lead_score, status, found_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    post['id'],
+                    post['title'],
+                    post['author'],
+                    post['subreddit'],
+                    post['score'],
+                    post['comments'],
+                    post['url'],
+                    post['text'],
+                    post['created'],
+                    post['created_readable'],
+                    lead_info['priority'],
+                    json.dumps(lead_info['matched_keywords']),
+                    lead_info['suggested_template'],
+                    lead_info['score'],
+                    'new',
+                    datetime.now().isoformat()
+                ))
+                new_leads += 1
         
         time.sleep(2)  # Rate limiting
     
-    save_leads(data)
-    return len(new_leads)
+    conn.commit()
+    conn.close()
+    return new_leads
 
+# ============================================
+# FLASK ROUTES
+# ============================================
 
 @app.route('/')
 def index():
@@ -230,8 +237,23 @@ def index():
 @app.route('/api/leads')
 def get_leads():
     """Get all leads"""
-    data = load_leads()
-    return jsonify(data['leads'])
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute('SELECT * FROM leads ORDER BY created DESC')
+    leads = [dict_from_row(row) for row in c.fetchall()]
+    conn.close()
+    
+    # Parse matched_keywords JSON string back to list
+    for lead in leads:
+        if lead['matched_keywords']:
+            try:
+                lead['matched_keywords'] = json.loads(lead['matched_keywords'])
+            except:
+                lead['matched_keywords'] = []
+        else:
+            lead['matched_keywords'] = []
+    
+    return jsonify(leads)
 
 @app.route('/api/scan', methods=['POST'])
 def scan():
@@ -242,53 +264,79 @@ def scan():
 @app.route('/api/lead/<lead_id>', methods=['PUT'])
 def update_lead(lead_id):
     """Update lead status or notes"""
-    data = load_leads()
     update = request.json
+    conn = get_db_connection()
+    c = conn.cursor()
     
-    for lead in data['leads']:
-        if lead['id'] == lead_id:
-            if 'status' in update:
-                lead['status'] = update['status']
-                if update['status'] == 'contacted':
-                    lead['replied_at'] = datetime.now().isoformat()
-            if 'notes' in update:
-                lead['notes'] = update['notes']
-            if 'converted' in update:
-                lead['converted'] = update['converted']
-                if update['converted']:
-                    lead['revenue'] = 5.99  # StatusMonkey pricing
-            break
+    if 'status' in update:
+        c.execute('UPDATE leads SET status = ?, status_updated_at = ? WHERE id = ?',
+                 (update['status'], datetime.now().isoformat(), lead_id))
+        if update['status'] == 'contacted':
+            c.execute('UPDATE leads SET replied_at = ? WHERE id = ?',
+                     (datetime.now().isoformat(), lead_id))
     
-    save_leads(data)
+    if 'notes' in update:
+        c.execute('UPDATE leads SET notes = ? WHERE id = ?',
+                 (update['notes'], lead_id))
+    
+    if 'converted' in update:
+        converted = 1 if update['converted'] else 0
+        revenue = 5.99 if update['converted'] else 0
+        c.execute('UPDATE leads SET converted = ?, revenue = ? WHERE id = ?',
+                 (converted, revenue, lead_id))
+    
+    conn.commit()
+    conn.close()
     return jsonify({'success': True})
 
 @app.route('/api/stats')
 def get_stats():
     """Get analytics stats"""
-    data = load_leads()
-    leads = data['leads']
+    conn = get_db_connection()
+    c = conn.cursor()
     
-    # Calculate stats
-    total = len(leads)
-    emergency = len([l for l in leads if l['priority'] == 'emergency'])
-    hot = len([l for l in leads if l['priority'] == 'hot'])
-    warm = len([l for l in leads if l['priority'] == 'warm'])
-    cold = len([l for l in leads if l['priority'] == 'cold'])
+    # Total leads
+    c.execute('SELECT COUNT(*) as total FROM leads')
+    total = c.fetchone()['total']
     
-    contacted = len([l for l in leads if l['status'] == 'contacted'])
-    converted = len([l for l in leads if l.get('converted', False)])
-    revenue = sum(l.get('revenue', 0) for l in leads)
+    # Priority counts
+    c.execute('SELECT COUNT(*) as count FROM leads WHERE priority = ?', ('emergency',))
+    emergency = c.fetchone()['count']
     
-    # Top subreddits
-    subreddit_counts = {}
-    for lead in leads:
-        sub = lead['subreddit']
-        subreddit_counts[sub] = subreddit_counts.get(sub, 0) + 1
+    c.execute('SELECT COUNT(*) as count FROM leads WHERE priority = ?', ('hot',))
+    hot = c.fetchone()['count']
     
-    top_subreddits = sorted(subreddit_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    c.execute('SELECT COUNT(*) as count FROM leads WHERE priority = ?', ('warm',))
+    warm = c.fetchone()['count']
+    
+    c.execute('SELECT COUNT(*) as count FROM leads WHERE priority = ?', ('cold',))
+    cold = c.fetchone()['count']
+    
+    # Status counts
+    c.execute('SELECT COUNT(*) as count FROM leads WHERE status = ?', ('contacted',))
+    contacted = c.fetchone()['count']
+    
+    c.execute('SELECT COUNT(*) as count FROM leads WHERE converted = 1')
+    converted = c.fetchone()['count']
+    
+    # Revenue
+    c.execute('SELECT SUM(revenue) as total FROM leads')
+    revenue = c.fetchone()['total'] or 0
     
     # Conversion rate
     conversion_rate = (converted / contacted * 100) if contacted > 0 else 0
+    
+    # Top subreddits
+    c.execute('''
+        SELECT subreddit, COUNT(*) as count 
+        FROM leads 
+        GROUP BY subreddit 
+        ORDER BY count DESC 
+        LIMIT 5
+    ''')
+    top_subreddits = [(row['subreddit'], row['count']) for row in c.fetchall()]
+    
+    conn.close()
     
     return jsonify({
         'total': total,
@@ -306,55 +354,99 @@ def get_stats():
 @app.route('/api/templates')
 def get_templates():
     """Get reply templates"""
-    data = load_leads()
-    return jsonify(data.get('templates', REPLY_TEMPLATES))
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute('SELECT name, content FROM templates')
+    templates = {row['name']: row['content'] for row in c.fetchall()}
+    conn.close()
+    return jsonify(templates)
 
 @app.route('/api/keywords')
 def get_keywords():
     """Get current keywords"""
-    data = load_leads()
-    return jsonify(data.get('keywords', KEYWORDS))
+    return jsonify(KEYWORDS)
 
-@app.route('/api/subreddits')
+# ============================================
+# SUBREDDIT MANAGEMENT - v1.9
+# ============================================
+
+@app.route('/api/subreddits', methods=['GET'])
 def get_subreddits():
-    """Get monitored subreddits"""
-    data = load_leads()
-    return jsonify(data.get('subreddits', TARGET_SUBREDDITS))
-# ADD THIS NEW ENDPOINT RIGHT BEFORE if __name__ == '__main__':
+    """Get all tracked subreddits"""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute('SELECT name, priority, added_date FROM subreddits WHERE active = 1 ORDER BY name')
+    subreddits = [dict_from_row(row) for row in c.fetchall()]
+    conn.close()
+    return jsonify(subreddits)
+
+@app.route('/api/subreddits', methods=['POST'])
+def add_subreddit():
+    """Add a new subreddit to track"""
+    data = request.json
+    subreddit_name = data.get('name', '').strip()
+    priority = data.get('priority', 'medium_priority')
+    
+    if not subreddit_name:
+        return jsonify({'success': False, 'error': 'Subreddit name required'}), 400
+    
+    # Remove r/ prefix if included
+    if subreddit_name.startswith('r/'):
+        subreddit_name = subreddit_name[2:]
+    
+    conn = get_db_connection()
+    c = conn.cursor()
+    
+    try:
+        c.execute('INSERT INTO subreddits (name, priority) VALUES (?, ?)', 
+                 (subreddit_name, priority))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': f'Added r/{subreddit_name}'})
+    except sqlite3.IntegrityError:
+        conn.close()
+        return jsonify({'success': False, 'error': 'Subreddit already exists'}), 400
+
+@app.route('/api/subreddits/<name>', methods=['DELETE'])
+def delete_subreddit(name):
+    """Remove a subreddit from tracking"""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute('UPDATE subreddits SET active = 0 WHERE name = ?', (name,))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'success': True, 'message': f'Removed r/{name}'})
 
 # ============================================
-# TASK 26: Status update endpoint
-# Purpose: Allow frontend to update lead status
+# STATUS UPDATE ENDPOINT
 # ============================================
+
 @app.route('/update_status', methods=['POST'])
 def update_status():
+    """Update lead status (used by frontend)"""
     try:
         data = request.json
         lead_id = data.get('lead_id')
         new_status = data.get('status')
         
-        # Load current leads
-        with open('data/leads.json', 'r') as f:
-            all_leads = json.load(f)
-        
-        # Find and update the lead
-        for lead in all_leads:
-            if lead.get('id') == lead_id:
-                lead['status'] = new_status
-                # Add timestamp for when status changed
-                lead['status_updated_at'] = datetime.now().isoformat()
-                break
-        
-        # Save updated leads
-        with open('data/leads.json', 'w') as f:
-            json.dump(all_leads, f, indent=2)
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute('UPDATE leads SET status = ?, status_updated_at = ? WHERE id = ?',
+                 (new_status, datetime.now().isoformat(), lead_id))
+        conn.commit()
+        conn.close()
         
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ============================================
+# START SERVER
+# ============================================
+
 if __name__ == '__main__':
-    print("🚀 StatusMonkey Lead Finder v1.5 Starting...")
+    print("🚀 StatusMonkey Lead Finder v1.9 Starting...")
     print("📊 Dashboard: http://localhost:5000")
-    print("✨ NEW: Emergency detection, reply templates, enhanced scoring!")
+    print("✨ NEW: SQLite database + Subreddit management!")
     app.run(debug=True, port=5000)

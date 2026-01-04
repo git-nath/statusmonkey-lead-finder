@@ -10,7 +10,7 @@
     <div class="container">
       <!-- Header -->
       <header class="terminal-header">
-        <h1>⚡ STATUSMONKEY LEAD FINDER v1.5</h1>
+        <h1>⚡ STATUSMONKEY LEAD FINDER v1.9</h1>
         <p class="subtitle">
           Reddit Lead Generation & Competitor Monitoring | Enhanced Scoring &
           Templates
@@ -124,6 +124,9 @@
         <button class="btn btn-primary" onclick="scanReddit()">
           🔍 Scan Reddit Now
         </button>
+        <button class="btn btn-secondary" onclick="openSubredditSettings()">
+          ⚙️ Manage Subreddits
+        </button>
         <button class="btn btn-secondary" onclick="filterLeads('all')">
           📋 All Leads
         </button>
@@ -218,5 +221,43 @@
     </div>
 
     <script src="/static/js/app.js"></script>
+    <!-- Subreddit Settings Modal - v1.9 -->
+    <div id="subreddit-modal" class="modal" style="display: none">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>⚙️ Subreddit Settings</h2>
+          <button class="modal-close" onclick="closeSubredditModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <h3>📍 Tracked Subreddits</h3>
+          <div id="subreddit-list" class="subreddit-list">
+            <!-- Subreddits will load here -->
+          </div>
+
+          <h3 style="margin-top: 20px">➕ Add New Subreddit</h3>
+          <div class="add-subreddit-form">
+            <input
+              type="text"
+              id="new-subreddit-input"
+              placeholder="Enter subreddit name (e.g., webdev)"
+              style="
+                flex: 1;
+                padding: 10px;
+                border: 1px solid #00ff41;
+                background: #000;
+                color: #00ff41;
+              "
+            />
+            <button
+              class="btn btn-primary"
+              onclick="addSubreddit()"
+              style="margin-left: 10px"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </body>
 </html>
