@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StatusMonkey Lead Finder</title>
+    <link rel="stylesheet" href="/static/css/terminal.css" />
+  </head>
+  <body>
+    <div class="container">
+      <!-- Header -->
+      <header class="terminal-header">
+        <h1>⚡ STATUSMONKEY LEAD FINDER v1.0</h1>
+        <p class="subtitle">Reddit Lead Generation & Competitor Monitoring</p>
+      </header>
+
+      <!-- Stats Dashboard -->
+      <section class="stats-grid" id="stats">
+        <div class="stat-card">
+          <div class="stat-label">Total Leads</div>
+          <div class="stat-value" id="stat-total">0</div>
+        </div>
+        <div class="stat-card hot">
+          <div class="stat-label">🔥 Hot</div>
+          <div class="stat-value" id="stat-hot">0</div>
+        </div>
+        <div class="stat-card warm">
+          <div class="stat-label">⚡ Warm</div>
+          <div class="stat-value" id="stat-warm">0</div>
+        </div>
+        <div class="stat-card cold">
+          <div class="stat-label">❄️ Cold</div>
+          <div class="stat-value" id="stat-cold">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">📧 Contacted</div>
+          <div class="stat-value" id="stat-contacted">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">💰 Converted</div>
+          <div class="stat-value" id="stat-converted">0</div>
+        </div>
+      </section>
+
+      <!-- Action Bar -->
+      <section class="action-bar">
+        <button class="btn btn-primary" onclick="scanReddit()">
+          🔍 Scan Reddit Now
+        </button>
+        <button class="btn btn-secondary" onclick="filterLeads('all')">
+          📋 All Leads
+        </button>
+        <button class="btn btn-secondary" onclick="filterLeads('hot')">
+          🔥 Hot Only
+        </button>
+        <button class="btn btn-secondary" onclick="filterLeads('new')">
+          🆕 New Only
+        </button>
+        <button class="btn btn-secondary" onclick="exportLeads()">
+          💾 Export CSV
+        </button>
+      </section>
+
+      <!-- Search -->
+      <section class="search-box">
+        <input
+          type="text"
+          id="searchInput"
+          placeholder="🔎 Search leads by keyword, subreddit, or author..."
+          onkeyup="searchLeads()"
+        />
+      </section>
+
+      <!-- Loading Indicator -->
+      <div id="loading" class="loading" style="display: none">
+        <div class="spinner"></div>
+        <p>Scanning Reddit for leads...</p>
+      </div>
+
+      <!-- Leads Container -->
+      <section id="leads-container" class="leads-container">
+        <!-- Leads will be dynamically loaded here -->
+      </section>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+  </body>
+</html>
