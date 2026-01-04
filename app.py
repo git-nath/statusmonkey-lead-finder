@@ -43,7 +43,7 @@ KEYWORDS = {
 
 # Target subreddits with priority
 TARGET_SUBREDDITS = {
-    'high_priority': ['webdev', 'SaaS', 'startups', 'Entrepreneur', 'smallbusiness'],
+    'high_priority': ['webdev', 'SaaS', 'startups', 'Entrepreneur'],
     'medium_priority': ['selfhosted', 'sysadmin', 'webhosting', 'aws', 'devops']
 }
 

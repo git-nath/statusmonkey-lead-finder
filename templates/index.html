@@ -183,6 +183,39 @@
         </div>
       </div>
     </div>
+    <!-- Quick Action Overlay - TASK 31 -->
+    <div
+      id="quick-action-overlay"
+      class="quick-overlay"
+      style="display: none"
+      onclick="closeQuickOverlay()"
+    >
+      <div class="quick-overlay-content" onclick="event.stopPropagation()">
+        <h3>📌 What did you do with this lead?</h3>
+        <p id="quick-lead-title" class="quick-lead-title"></p>
+
+        <div class="quick-actions-buttons">
+          <button
+            class="btn-quick-action btn-contacted"
+            onclick="event.stopPropagation(); quickAction('contacted')"
+          >
+            📧 Contacted
+          </button>
+          <button
+            class="btn-quick-action btn-ignored"
+            onclick="event.stopPropagation(); quickAction('ignored')"
+          >
+            ❌ Ignore
+          </button>
+          <button
+            class="btn-quick-action btn-later"
+            onclick="event.stopPropagation(); closeQuickOverlay()"
+          >
+            ⏰ Later
+          </button>
+        </div>
+      </div>
+    </div>
 
     <script src="/static/js/app.js"></script>
   </body>

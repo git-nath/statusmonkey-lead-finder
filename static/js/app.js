@@ -6,6 +6,8 @@ let currentStatusFilter = "all";
 let statusCounts = {};
 // TASK 28: Pin tracking
 let pinnedLeads = new Set(); // Store pinned lead IDs
+// TASK 31: Quick action tracking
+let currentQuickActionLead = null;
 
 let currentFilter = "all";
 let templates = {};
@@ -74,13 +76,18 @@ async function loadTemplates() {
 // Display leads
 function displayLeads(leads) {
   const container = document.getElementById("leads-container");
-  // TASK 26: Filter by status tab
-  if (currentStatusFilter !== "all") {
-    leads = leads.filter((lead) => {
-      const leadStatus = lead.status || "unread";
+  // TASK 26 & 29: Filter by status tab
+  leads = leads.filter((lead) => {
+    const leadStatus = lead.status || "new";
+
+    if (currentStatusFilter === "all") {
+      // "All" shows only uncategorized leads (new, unread)
+      return leadStatus === "new" || leadStatus === "unread";
+    } else {
+      // Other tabs show only their specific status
       return leadStatus === currentStatusFilter;
-    });
-  }
+    }
+  });
 
   if (leads.length === 0) {
     container.innerHTML = `
@@ -110,7 +117,12 @@ function createLeadCard(lead) {
     : "";
 
   return `
-        <div class="lead-card ${priorityClass}" data-id="${lead.id}">
+    <div class="lead-card ${priorityClass}" data-id="${
+    lead.id
+  }" ondblclick="showQuickActionOverlay('${lead.id}')" style="cursor: pointer;">
+
+
+       
             <div class="lead-header">
                 <div class="lead-title">${escapeHtml(lead.title)}</div>
                 <div class="lead-badges">
@@ -119,14 +131,15 @@ function createLeadCard(lead) {
                     }">${lead.priority.toUpperCase()} - Score: ${
     lead.score
   }</span>
-                    ${statusBadge}
-                    ${convertedBadge}
+                    ${statusBadge ? " " + statusBadge : ""}
+                    ${convertedBadge ? " " + convertedBadge : ""}
                     ${
                       lead.status === "new"
-                        ? '<span class="badge badge-new">NEW</span>'
+                        ? ' <span class="badge badge-new">NEW</span>'
                         : ""
                     }
                 </div>
+
             </div>
             
             <div class="lead-meta">
@@ -170,16 +183,12 @@ function createLeadCard(lead) {
             }
             
             <div class="lead-actions">
-                <button class="btn-small btn-link" onclick="openPost('${
+                <button class="btn-small btn-link" onclick="event.stopPropagation(); openPost('${
                   lead.url
                 }')">
                     🔗 Open Post
                 </button>
-                                <button class="btn-small btn-link" onclick="openPost('${
-                                  lead.url
-                                }')">
-                    🔗 Open Post
-                </button>
+              
                 <button class="btn-small btn-pin ${
                   pinnedLeads.has(lead.id) ? "pinned" : ""
                 }" 
@@ -189,27 +198,29 @@ function createLeadCard(lead) {
                     ${pinnedLeads.has(lead.id) ? "📌 Pinned" : "📍 Pin"}
                 </button>
 
-                <button class="btn-small btn-template" onclick="showTemplate('${
+
+                <button class="btn-small btn-template" onclick="event.stopPropagation(); showTemplate('${
                   lead.id
                 }', '${lead.suggested_template || "recommendation"}')">
                     📝 Get Reply Template
                 </button>
-                <button class="btn-small btn-contacted" onclick="updateStatus('${
+                <button class="btn-small btn-contacted" onclick="event.stopPropagation(); updateStatus('${
                   lead.id
                 }', 'contacted')">
                     📧 Mark Contacted
                 </button>
-                <button class="btn-small btn-converted" onclick="markConverted('${
+                <button class="btn-small btn-converted" onclick="event.stopPropagation(); markConverted('${
                   lead.id
                 }')">
                     💰 Mark Converted
                 </button>
-                <button class="btn-small btn-ignore" onclick="updateStatus('${
+                <button class="btn-small btn-ignore" onclick="event.stopPropagation(); updateStatus('${
                   lead.id
                 }', 'ignored')">
                     ❌ Ignore
                 </button>
             </div>
+
         </div>
     `;
 }
@@ -471,7 +482,7 @@ function filterByStatus(status) {
 // ============================================
 function updateStatusCounts() {
   statusCounts = {
-    all: allLeads.length,
+    all: 0, // TASK 29: Will count only uncategorized
     unread: 0,
     read: 0,
     contacted: 0,
@@ -482,7 +493,14 @@ function updateStatusCounts() {
 
   // Count each status
   allLeads.forEach((lead) => {
-    const status = lead.status || "unread";
+    const status = lead.status || "new";
+
+    // TASK 29: "All" counts only uncategorized (new/unread)
+    if (status === "new" || status === "unread") {
+      statusCounts.all++;
+    }
+
+    // Count specific status
     if (statusCounts[status] !== undefined) {
       statusCounts[status]++;
     }
@@ -613,5 +631,32 @@ function scrollToLead(leadId) {
     setTimeout(() => {
       leadCard.classList.remove("highlight");
     }, 2000);
+  }
+}
+// ============================================
+// TASK 31: Quick action overlay functions
+// ============================================
+function showQuickActionOverlay(leadId) {
+  const lead = allLeads.find((l) => l.id === leadId);
+  if (!lead) return;
+
+  currentQuickActionLead = lead;
+
+  const overlay = document.getElementById("quick-action-overlay");
+  const titleElement = document.getElementById("quick-lead-title");
+
+  titleElement.textContent = lead.title;
+  overlay.style.display = "flex";
+}
+
+function closeQuickOverlay() {
+  document.getElementById("quick-action-overlay").style.display = "none";
+  currentQuickActionLead = null;
+}
+
+function quickAction(action) {
+  if (currentQuickActionLead) {
+    updateStatus(currentQuickActionLead.id, action);
+    closeQuickOverlay();
   }
 }
