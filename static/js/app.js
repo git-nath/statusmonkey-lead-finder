@@ -4,6 +4,8 @@ let allLeads = [];
 // TASK 26: Status tracking variables
 let currentStatusFilter = "all";
 let statusCounts = {};
+// TASK 28: Pin tracking
+let pinnedLeads = new Set(); // Store pinned lead IDs
 
 let currentFilter = "all";
 let templates = {};
@@ -20,6 +22,16 @@ async function loadLeads() {
   try {
     const response = await fetch("/api/leads");
     allLeads = await response.json();
+
+    // TASK 28: Load saved pins from localStorage
+    const savedPins = localStorage.getItem("pinnedLeads");
+    if (savedPins) {
+      pinnedLeads = new Set(JSON.parse(savedPins));
+    }
+
+    updateStatusCounts(); // TASK 26: Update tab counts
+    displayLeads(allLeads);
+
     updateStatusCounts();
     displayLeads(allLeads);
   } catch (error) {
@@ -163,6 +175,20 @@ function createLeadCard(lead) {
                 }')">
                     🔗 Open Post
                 </button>
+                                <button class="btn-small btn-link" onclick="openPost('${
+                                  lead.url
+                                }')">
+                    🔗 Open Post
+                </button>
+                <button class="btn-small btn-pin ${
+                  pinnedLeads.has(lead.id) ? "pinned" : ""
+                }" 
+                        onclick="event.stopPropagation(); togglePin('${
+                          lead.id
+                        }')">
+                    ${pinnedLeads.has(lead.id) ? "📌 Pinned" : "📍 Pin"}
+                </button>
+
                 <button class="btn-small btn-template" onclick="showTemplate('${
                   lead.id
                 }', '${lead.suggested_template || "recommendation"}')">
@@ -502,5 +528,90 @@ async function updateLeadStatus(leadId, newStatus) {
   } catch (error) {
     console.error("Error updating status:", error);
     showError("Failed to update status");
+  }
+}
+// ============================================
+// TASK 28: Toggle pinned navigation panel
+// ============================================
+function togglePinnedNav() {
+  const panel = document.getElementById("pinned-nav");
+  if (panel.style.display === "none" || panel.style.display === "") {
+    panel.style.display = "block";
+    updatePinnedList();
+  } else {
+    panel.style.display = "none";
+  }
+}
+
+function closePinnedNav() {
+  document.getElementById("pinned-nav").style.display = "none";
+}
+
+// ============================================
+// TASK 28: Toggle pin on a lead
+// ============================================
+function togglePin(leadId) {
+  if (pinnedLeads.has(leadId)) {
+    // Unpin
+    pinnedLeads.delete(leadId);
+  } else {
+    // Pin
+    pinnedLeads.add(leadId);
+  }
+
+  // Save to localStorage
+  localStorage.setItem("pinnedLeads", JSON.stringify([...pinnedLeads]));
+
+  // Update display
+  updatePinnedList();
+  displayLeads(allLeads);
+  updateStatusCounts();
+}
+
+// ============================================
+// TASK 28: Update pinned list display
+// ============================================
+function updatePinnedList() {
+  const listContainer = document.getElementById("pinned-list");
+  const pinnedArray = allLeads.filter((lead) => pinnedLeads.has(lead.id));
+
+  if (pinnedArray.length === 0) {
+    listContainer.innerHTML =
+      '<div style="color: #888; text-align: center; padding: 20px;">No pinned leads yet</div>';
+    return;
+  }
+
+  listContainer.innerHTML = pinnedArray
+    .map(
+      (lead) => `
+    <div class="pinned-item" onclick="scrollToLead('${lead.id}')">
+      <div class="pinned-item-title">${escapeHtml(lead.title)}</div>
+      <div class="pinned-item-meta">r/${lead.subreddit} • ${lead.priority}</div>
+    </div>
+  `
+    )
+    .join("");
+
+  // Update count badge
+  document.getElementById("count-pinned").textContent = pinnedArray.length;
+}
+
+// ============================================
+// TASK 28: Scroll to pinned lead (Telegram style!)
+// ============================================
+function scrollToLead(leadId) {
+  const leadCard = document.querySelector(`[data-id="${leadId}"]`);
+  if (leadCard) {
+    // Close pinned panel
+    closePinnedNav();
+
+    // Scroll to lead
+    leadCard.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    // Highlight it temporarily
+    leadCard.classList.add("highlight");
+    setTimeout(() => {
+      leadCard.classList.remove("highlight");
+    }, 2000);
   }
 }

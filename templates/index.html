@@ -61,6 +61,10 @@
         >
           All <span class="tab-count" id="count-all">0</span>
         </button>
+        <button class="tab-btn" onclick="togglePinnedNav()">
+          📌 Pinned <span class="tab-count" id="count-pinned">0</span>
+        </button>
+
         <button
           class="tab-btn"
           data-status="unread"
@@ -103,6 +107,16 @@
         >
           ❌ Ignored <span class="tab-count" id="count-ignored">0</span>
         </button>
+      </section>
+      <!-- Pinned Navigation - TASK 28 -->
+      <section class="pinned-nav" id="pinned-nav" style="display: none">
+        <div class="pinned-header">
+          <h3>📌 Pinned Leads - Quick Navigation</h3>
+          <button class="btn-close" onclick="closePinnedNav()">✕</button>
+        </div>
+        <div class="pinned-list" id="pinned-list">
+          <!-- Pinned items will be listed here -->
+        </div>
       </section>
 
       <!-- Action Bar -->

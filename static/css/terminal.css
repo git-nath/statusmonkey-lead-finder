@@ -621,3 +621,123 @@ body {
 .btn-ignore:hover {
   background: rgba(255, 0, 0, 0.2);
 }
+/* ============================================
+   TASK 28: Pinned navigation panel (Telegram style)
+   ============================================ */
+.pinned-nav {
+  position: fixed;
+  top: 50%;
+  right: 20px;
+  transform: translateY(-50%);
+  width: 350px;
+  max-height: 80vh;
+  background: rgba(0, 0, 0, 0.95);
+  border: 2px solid #00ff00;
+  border-radius: 8px;
+  padding: 15px;
+  z-index: 1000;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+  overflow-y: auto;
+}
+
+.pinned-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #00ff00;
+}
+
+.pinned-header h3 {
+  color: #00ff00;
+  font-size: 16px;
+  margin: 0;
+}
+
+.btn-close {
+  background: transparent;
+  border: 1px solid #ff0000;
+  color: #ff0000;
+  padding: 5px 10px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.btn-close:hover {
+  background: rgba(255, 0, 0, 0.2);
+}
+
+.pinned-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pinned-item {
+  background: rgba(0, 255, 0, 0.05);
+  border: 1px solid #00ff00;
+  border-radius: 4px;
+  padding: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pinned-item:hover {
+  background: rgba(0, 255, 0, 0.15);
+  transform: translateX(-5px);
+}
+
+.pinned-item-title {
+  color: #00ff00;
+  font-size: 14px;
+  margin-bottom: 5px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pinned-item-meta {
+  color: #888;
+  font-size: 11px;
+}
+
+/* Pin button on lead cards */
+.btn-pin {
+  background: transparent;
+  border: 1px solid #ffa500;
+  color: #ffa500;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-family: "Courier New", monospace;
+  font-size: 12px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.btn-pin:hover {
+  background: rgba(255, 165, 0, 0.2);
+}
+
+.btn-pin.pinned {
+  background: rgba(255, 165, 0, 0.3);
+  font-weight: bold;
+}
+
+/* Highlight pinned lead when scrolled to */
+.lead-card.highlight {
+  animation: highlight-pulse 1s ease;
+  border: 2px solid #ffa500 !important;
+}
+
+@keyframes highlight-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(255, 165, 0, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255, 165, 0, 0.8);
+  }
+}
