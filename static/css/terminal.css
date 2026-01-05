@@ -934,3 +934,60 @@ body {
   outline: none;
   box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
 }
+
+/* ============================================
+   QUICK PASTE HELPER - v2.0
+   ============================================ */
+
+.btn-copy-full {
+  background: rgba(0, 191, 255, 0.2);
+  border: 1px solid #00bfff;
+  color: #00bfff;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: "Courier New", monospace;
+  font-size: 13px;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.btn-copy-full:hover {
+  background: rgba(0, 191, 255, 0.4);
+  transform: scale(1.05);
+  box-shadow: 0 0 10px rgba(0, 191, 255, 0.5);
+}
+
+#full-post-modal .modal-content {
+  max-width: 900px;
+  max-height: 90vh;
+}
+
+#full-post-content {
+  width: 100%;
+  padding: 15px;
+  background: #000;
+  color: #00ff41;
+  border: 1px solid #00ff41;
+  font-family: "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+#full-post-content::-webkit-scrollbar {
+  width: 10px;
+}
+
+#full-post-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+#full-post-content::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 65, 0.5);
+  border-radius: 5px;
+}
+
+#full-post-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 65, 0.8);
+}

@@ -367,6 +367,89 @@ def get_keywords():
     return jsonify(KEYWORDS)
 
 # ============================================
+# REDDIT FULL POST FETCHER - v2.0
+# ============================================
+
+@app.route('/api/reddit/full/<post_id>')
+def get_full_reddit_post(post_id):
+    """Fetch full Reddit post with all comments"""
+    try:
+        # Find lead in database
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute('SELECT * FROM leads WHERE id = ?', (post_id,))
+        lead = c.fetchone()
+        conn.close()
+        
+        if not lead:
+            return jsonify({'success': False, 'error': 'Lead not found'}), 404
+        
+        # Extract Reddit post ID from URL
+        # URL format: https://www.reddit.com/r/subreddit/comments/POST_ID/title/
+        reddit_id = lead['id']
+        subreddit = lead['subreddit']
+        
+        # Fetch from Reddit API
+        url = f'https://www.reddit.com/r/{subreddit}/comments/{reddit_id}.json'
+        headers = {'User-Agent': 'StatusMonkeyFinder/2.0'}
+        
+        response = requests.get(url, headers=headers, timeout=10)
+        data = response.json()
+        
+        # Parse post
+        post_data = data[0]['data']['children'][0]['data']
+        
+        # Parse comments
+        comments = []
+        if len(data) > 1:
+            comments = parse_comments(data[1]['data']['children'])
+        
+        result = {
+            'success': True,
+            'title': post_data['title'],
+            'author': post_data['author'],
+            'selftext': post_data.get('selftext', ''),
+            'url': f"https://www.reddit.com{post_data['permalink']}",
+            'score': post_data['score'],
+            'num_comments': post_data['num_comments'],
+            'comments': comments
+        }
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"Error fetching full post: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+def parse_comments(comment_list, depth=0):
+    """Recursively parse Reddit comments"""
+    comments = []
+    
+    for item in comment_list:
+        if item['kind'] == 't1':  # Comment
+            comment = item['data']
+            
+            comment_obj = {
+                'author': comment.get('author', '[deleted]'),
+                'body': comment.get('body', '[removed]'),
+                'score': comment.get('score', 0),
+                'depth': depth
+            }
+            
+            comments.append(comment_obj)
+            
+            # Parse replies
+            if 'replies' in comment and comment['replies']:
+                if isinstance(comment['replies'], dict):
+                    replies = parse_comments(
+                        comment['replies']['data']['children'],
+                        depth + 1
+                    )
+                    comments.extend(replies)
+    
+    return comments
+
+# ============================================
 # SUBREDDIT MANAGEMENT - v1.9
 # ============================================
 

@@ -259,5 +259,111 @@
         </div>
       </div>
     </div>
+    <!-- Full Post Modal - v2.0 -->
+    <!-- Full Post Modal - v2.0 -->
+    <div id="full-post-modal" class="modal" style="display: none">
+      <div
+        class="modal-content"
+        style="
+          max-width: 900px;
+          max-height: 90vh;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+        "
+      >
+        <div class="modal-header">
+          <h2>📋 Full Post Content</h2>
+          <button class="modal-close" onclick="closeFullPostModal()">✕</button>
+        </div>
+        <div
+          class="modal-body"
+          style="
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+          "
+        >
+          <p style="color: #00ff41; margin-bottom: 10px">
+            Copy this content and paste it into your Perplexity space for
+            relevance checking.
+          </p>
+
+          <!-- BUTTONS AT TOP -->
+          <div
+            class="modal-actions"
+            style="
+              margin-bottom: 15px;
+              display: flex;
+              gap: 10px;
+              flex-wrap: wrap;
+            "
+          >
+            <button class="btn btn-primary" onclick="copyFullPostToClipboard()">
+              📋 Copy to Clipboard
+            </button>
+            <button class="btn btn-secondary" onclick="openPerplexitySpace()">
+              🚀 Open Perplexity Space
+            </button>
+            <button
+              class="btn btn-secondary"
+              onclick="openPostFromModal()"
+              style="
+                background: rgba(0, 150, 255, 0.2);
+                border-color: #0af;
+                color: #0af;
+              "
+            >
+              🔗 Open Post
+            </button>
+            <button
+              class="btn btn-success"
+              onclick="quickContactFromModal()"
+              style="
+                background: rgba(0, 255, 0, 0.2);
+                border-color: #0f0;
+                color: #0f0;
+              "
+            >
+              📧 Contacted
+            </button>
+            <button
+              class="btn btn-danger"
+              onclick="quickIgnoreFromModal()"
+              style="
+                background: rgba(255, 0, 0, 0.2);
+                border-color: #f00;
+                color: #f00;
+              "
+            >
+              ❌ Ignore
+            </button>
+            <button class="btn btn-secondary" onclick="closeFullPostModal()">
+              ✕ Close
+            </button>
+          </div>
+
+          <!-- TEXTAREA -->
+          <textarea
+            id="full-post-content"
+            rows="20"
+            readonly
+            style="
+              flex: 1;
+              width: 100%;
+              padding: 15px;
+              background: #000;
+              color: #00ff41;
+              border: 1px solid #00ff41;
+              font-family: 'Courier New', monospace;
+              font-size: 13px;
+              line-height: 1.5;
+              resize: none;
+            "
+          ></textarea>
+        </div>
+      </div>
+    </div>
   </body>
 </html>

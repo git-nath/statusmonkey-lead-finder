@@ -117,9 +117,10 @@ function createLeadCard(lead) {
     : "";
 
   return `
-    <div class="lead-card ${priorityClass}" data-id="${
+   <div class="lead-card ${priorityClass}" data-id="${
     lead.id
-  }" ondblclick="showQuickActionOverlay('${lead.id}')" style="cursor: pointer;">
+  }" ondblclick="copyFullPost('${lead.id}')" style="cursor: pointer;">
+
 
 
        
@@ -188,6 +189,12 @@ function createLeadCard(lead) {
                 }')">
                     🔗 Open Post
                 </button>
+                <button class="btn-small btn-copy-full" onclick="event.stopPropagation(); copyFullPost('${
+                  lead.id
+                }')">
+    📋 Copy Full Post
+</button>
+
               
                 <button class="btn-small btn-pin ${
                   pinnedLeads.has(lead.id) ? "pinned" : ""
@@ -445,12 +452,12 @@ function openPost(url) {
 
 // Show notification
 function showNotification(message) {
-  alert(message); // Simple for now, can upgrade to toast notifications later
+  console.log(message); // Silent - just log to console
 }
 
 // Show error
 function showError(message) {
-  alert("❌ Error: " + message);
+  console.error("❌ Error: " + message); // Silent - just log to console
 }
 
 // Escape HTML to prevent XSS
@@ -767,5 +774,125 @@ async function deleteSubreddit(name) {
   } catch (error) {
     console.error("Error deleting subreddit:", error);
     showError("Failed to delete subreddit");
+  }
+}
+
+// ============================================
+// QUICK PASTE HELPER - v2.0
+// ============================================
+
+async function copyFullPost(leadId) {
+  // Show loading
+  const loadingDiv = document.getElementById("loading");
+  loadingDiv.style.display = "block";
+
+  try {
+    const response = await fetch(`/api/reddit/full/${leadId}`);
+    const data = await response.json();
+
+    loadingDiv.style.display = "none";
+
+    if (data.success) {
+      data.leadId = leadId; // Add lead ID to the data
+      showFullPostModal(data);
+    } else {
+      showError("Failed to fetch full post: " + data.error);
+    }
+  } catch (error) {
+    loadingDiv.style.display = "none";
+    console.error("Error fetching full post:", error);
+    showError("Failed to fetch full post");
+  }
+}
+
+function showFullPostModal(postData) {
+  // Format the content
+  let content = `TITLE: ${postData.title}\n\n`;
+  content += `AUTHOR: u/${postData.author}\n`;
+  content += `SCORE: ${postData.score} upvotes | ${postData.num_comments} comments\n`;
+  content += `URL: ${postData.url}\n\n`;
+  content += `POST:\n${postData.selftext || "[No text content]"}\n\n`;
+
+  if (postData.comments && postData.comments.length > 0) {
+    content += `COMMENTS (${postData.comments.length}):\n`;
+    content += "=".repeat(50) + "\n\n";
+
+    postData.comments.forEach((comment, index) => {
+      const indent = "  ".repeat(comment.depth);
+      content += `${indent}[${index + 1}] u/${comment.author} (${
+        comment.score
+      } points):\n`;
+      content += `${indent}${comment.body}\n\n`;
+    });
+  } else {
+    content += "No comments yet.\n";
+  }
+
+  /// Show modal and store lead ID + post URL
+  document.getElementById("full-post-content").value = content;
+  document
+    .getElementById("full-post-modal")
+    .setAttribute("data-lead-id", postData.leadId);
+  document
+    .getElementById("full-post-modal")
+    .setAttribute("data-post-url", postData.post_url);
+  document.getElementById("full-post-modal").style.display = "flex";
+}
+
+function closeFullPostModal() {
+  document.getElementById("full-post-modal").style.display = "none";
+}
+
+function copyFullPostToClipboard() {
+  const content = document.getElementById("full-post-content").value;
+
+  navigator.clipboard
+    .writeText(content)
+    .then(() => {
+      showNotification("✅ Full post copied to clipboard!");
+    })
+    .catch((err) => {
+      showError("Failed to copy to clipboard");
+    });
+}
+
+function openPerplexitySpace() {
+  window.open(
+    "https://www.perplexity.ai/search/reddit-marketing-YYe7.MtmTc6D1AANKfrUSQ",
+    "_blank"
+  );
+  showNotification("💡 Perplexity space opened! Paste the content there.");
+}
+
+function quickContactFromModal() {
+  const modal = document.getElementById("full-post-modal");
+  const leadId = modal.getAttribute("data-lead-id");
+
+  if (leadId) {
+    updateStatus(leadId, "contacted");
+    closeFullPostModal();
+    loadLeads(); // Refresh leads
+    loadStats(); // Refresh stats
+  }
+}
+
+function quickIgnoreFromModal() {
+  const modal = document.getElementById("full-post-modal");
+  const leadId = modal.getAttribute("data-lead-id");
+
+  if (leadId) {
+    updateStatus(leadId, "ignored");
+    closeFullPostModal();
+    loadLeads(); // Refresh leads
+    loadStats(); // Refresh stats
+  }
+}
+
+function openPostFromModal() {
+  const modal = document.getElementById("full-post-modal");
+  const postUrl = modal.getAttribute("data-post-url");
+
+  if (postUrl) {
+    window.open(postUrl, "_blank");
   }
 }
