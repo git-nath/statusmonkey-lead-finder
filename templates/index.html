@@ -61,24 +61,17 @@
         >
           All <span class="tab-count" id="count-all">0</span>
         </button>
+        <button id="today-btn" class="tab-btn" onclick="filterLeads('today')">
+          📅 Today <span class="tab-count" id="count-today">0</span>
+        </button>
+
         <button class="tab-btn" onclick="togglePinnedNav()">
           📌 Pinned <span class="tab-count" id="count-pinned">0</span>
         </button>
+        <button class="tab-btn" onclick="filterLeads('hot')">
+          🔥 Hot <span class="tab-count" id="count-hot">0</span>
+        </button>
 
-        <button
-          class="tab-btn"
-          data-status="unread"
-          onclick="filterByStatus('unread')"
-        >
-          🔵 Unread <span class="tab-count" id="count-unread">0</span>
-        </button>
-        <button
-          class="tab-btn"
-          data-status="read"
-          onclick="filterByStatus('read')"
-        >
-          👁️ Read <span class="tab-count" id="count-read">0</span>
-        </button>
         <button
           class="tab-btn"
           data-status="contacted"
@@ -124,6 +117,7 @@
         <button class="btn btn-primary" onclick="scanReddit()">
           🔍 Scan Reddit Now
         </button>
+
         <button class="btn btn-secondary" onclick="openSubredditSettings()">
           ⚙️ Manage Subreddits
         </button>

@@ -17,8 +17,9 @@ document.addEventListener("DOMContentLoaded", function () {
   loadLeads();
   loadStats();
   loadTemplates();
-});
 
+  // Default to Today view
+});
 // Load all leads
 async function loadLeads() {
   try {
@@ -31,11 +32,10 @@ async function loadLeads() {
       pinnedLeads = new Set(JSON.parse(savedPins));
     }
 
-    updateStatusCounts(); // TASK 26: Update tab counts
-    displayLeads(allLeads);
-
     updateStatusCounts();
-    displayLeads(allLeads);
+
+    // ✅ Default view = Today (after leads are loaded)
+    filterLeads("today");
   } catch (error) {
     console.error("Error loading leads:", error);
     showError("Failed to load leads");
@@ -74,29 +74,32 @@ async function loadTemplates() {
 }
 
 // Display leads
-function displayLeads(leads) {
+function displayLeads(leads, options = {}) {
   const container = document.getElementById("leads-container");
-  // TASK 26 & 29: Filter by status tab
-  leads = leads.filter((lead) => {
-    const leadStatus = lead.status || "new";
 
-    if (currentStatusFilter === "all") {
-      // "All" shows only uncategorized leads (new, unread)
-      return leadStatus === "new" || leadStatus === "unread";
-    } else {
-      // Other tabs show only their specific status
-      return leadStatus === currentStatusFilter;
-    }
-  });
+  // ⛔️ IMPORTANT: Skip status filtering when explicitly told (Today view)
+  if (!options.bypassStatus) {
+    leads = leads.filter((lead) => {
+      const leadStatus = lead.status || "new";
+
+      if (currentStatusFilter === "all") {
+        // "All" shows only uncategorized leads (new, unread)
+        return leadStatus === "new" || leadStatus === "unread";
+      } else {
+        // Other tabs show only their specific status
+        return leadStatus === currentStatusFilter;
+      }
+    });
+  }
 
   if (leads.length === 0) {
     container.innerHTML = `
-            <div class="empty-state">
-                <h2>📭 No Leads Found</h2>
-                <p>Click "Scan Reddit Now" to find potential customers for StatusMonkey.co</p>
-                <button class="btn btn-primary" onclick="scanReddit()">🔍 Start Scanning</button>
-            </div>
-        `;
+      <div class="empty-state">
+        <h2>📭 No Leads Found</h2>
+        <p>Click "Scan Reddit Now" to find potential customers for StatusMonkey.co</p>
+        <button class="btn btn-primary" onclick="scanReddit()">🔍 Start Scanning</button>
+      </div>
+    `;
     return;
   }
 
@@ -301,6 +304,7 @@ async function scanReddit() {
 }
 
 // Update lead status
+
 async function updateStatus(leadId, status) {
   try {
     const response = await fetch(`/api/lead/${leadId}`, {
@@ -312,8 +316,19 @@ async function updateStatus(leadId, status) {
     });
 
     if (response.ok) {
+      // ✅ UPDATE: Update lead in memory FIRST
+      const lead = allLeads.find((l) => l.id === leadId);
+      if (lead) {
+        lead.status = status;
+      }
+
+      // ✅ UPDATE: Refresh counts immediately
+      updateStatusCounts();
+
+      // ✅ FIX: Stay on current filter (today, hot, emergency, etc.)
+      filterLeads(currentFilter);
+
       showNotification(`✅ Lead marked as ${status}`);
-      loadLeads();
       loadStats();
     }
   } catch (error) {
@@ -349,13 +364,57 @@ async function markConverted(leadId) {
 
 // Filter leads
 function filterLeads(filter) {
+  // Reset tab UI
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.classList.remove("active");
+  });
+
+  const todayBtn = document.getElementById("today-btn");
   currentFilter = filter;
+
   let filtered = allLeads;
 
+  if (filter === "today") {
+    const today = new Date().toISOString().split("T")[0];
+
+    // ✅ Filter: Found today + NOT contacted/ignored/converted
+    const filtered = allLeads.filter((lead) => {
+      if (!lead.found_at) return false;
+
+      const foundToday = lead.found_at.startsWith(today);
+      const status = lead.status || "new";
+      const isHandled = ["contacted", "ignored", "converted"].includes(status);
+
+      return foundToday && !isHandled; // ✅ Only show unhandled leads
+    });
+
+    displayLeads(filtered, { bypassStatus: true }); // Keep this - it's fine now
+
+    document.getElementById("today-btn")?.classList.add("active");
+    return;
+  }
+
+  // normal filters
   if (filter === "emergency") {
     filtered = allLeads.filter((lead) => lead.priority === "emergency");
   } else if (filter === "hot") {
-    filtered = allLeads.filter((lead) => lead.priority === "hot");
+    // ✅ NEW: Hot = hot priority + NOT contacted/ignored/converted
+    filtered = allLeads.filter(
+      (lead) =>
+        lead.priority === "hot" &&
+        !["contacted", "ignored", "converted"].includes(lead.status || "new")
+    );
+
+    // ✅ Make Hot tab active
+    document
+      .querySelectorAll(".tab-btn")
+      .forEach((btn) => btn.classList.remove("active"));
+    document
+      .querySelector("[onclick=\"filterLeads('hot')\"]")
+      ?.classList.add("active");
+
+    displayLeads(filtered, { bypassStatus: true });
+    return;
   } else if (filter === "warm") {
     filtered = allLeads.filter((lead) => lead.priority === "warm");
   } else if (filter === "cold") {
@@ -489,38 +548,60 @@ function filterByStatus(status) {
 // ============================================
 function updateStatusCounts() {
   statusCounts = {
-    all: 0, // TASK 29: Will count only uncategorized
+    all: 0, // new + unread
     unread: 0,
     read: 0,
     contacted: 0,
     replied: 0,
     converted: 0,
     ignored: 0,
+    today: 0, // found today
+    hot: 0, // ✅ NEW: hot priority count
   };
 
-  // Count each status
+  const today = new Date().toISOString().split("T")[0];
+
   allLeads.forEach((lead) => {
     const status = lead.status || "new";
+    const priority = lead.priority || "cold";
 
-    // TASK 29: "All" counts only uncategorized (new/unread)
-    if (status === "new" || status === "unread") {
+    // ✅ All = uncategorized inbox (exclude contacted/ignored/converted)
+    if (["new", "unread"].includes(status)) {
       statusCounts.all++;
     }
 
-    // Count specific status
-    if (statusCounts[status] !== undefined) {
+    // ✅ Count individual statuses safely
+    if (statusCounts.hasOwnProperty(status)) {
       statusCounts[status]++;
+    }
+
+    // ✅ NEW: Count HOT priority (exclude contacted/ignored/converted)
+    if (
+      priority === "hot" &&
+      !["contacted", "ignored", "converted"].includes(status)
+    ) {
+      statusCounts.hot++;
+    }
+
+    // ✅ Today = found today (exclude contacted/ignored/converted)
+    if (
+      lead.found_at &&
+      lead.found_at.startsWith(today) &&
+      !["contacted", "ignored", "converted"].includes(status)
+    ) {
+      statusCounts.today++;
     }
   });
 
-  // Update tab badges
-  Object.keys(statusCounts).forEach((status) => {
-    const badge = document.getElementById(`count-${status}`);
-    if (badge) {
-      badge.textContent = statusCounts[status];
+  // ✅ Update tab counters
+  Object.keys(statusCounts).forEach((key) => {
+    const el = document.getElementById(`count-${key}`);
+    if (el) {
+      el.textContent = statusCounts[key];
     }
   });
 }
+
 // ============================================
 // TASK 26: Update lead status via backend
 // ============================================
@@ -835,7 +916,7 @@ function showFullPostModal(postData) {
     .setAttribute("data-lead-id", postData.leadId);
   document
     .getElementById("full-post-modal")
-    .setAttribute("data-post-url", postData.post_url);
+    .setAttribute("data-post-url", postData.url);
   document.getElementById("full-post-modal").style.display = "flex";
 }
 
@@ -869,10 +950,8 @@ function quickContactFromModal() {
   const leadId = modal.getAttribute("data-lead-id");
 
   if (leadId) {
-    updateStatus(leadId, "contacted");
-    closeFullPostModal();
-    loadLeads(); // Refresh leads
-    loadStats(); // Refresh stats
+    closeFullPostModal(); // ✅ Close modal FIRST
+    updateStatus(leadId, "contacted"); // ✅ This already refreshes everything
   }
 }
 
@@ -881,10 +960,8 @@ function quickIgnoreFromModal() {
   const leadId = modal.getAttribute("data-lead-id");
 
   if (leadId) {
-    updateStatus(leadId, "ignored");
-    closeFullPostModal();
-    loadLeads(); // Refresh leads
-    loadStats(); // Refresh stats
+    closeFullPostModal(); // ✅ Close modal FIRST
+    updateStatus(leadId, "ignored"); // ✅ This already refreshes everything
   }
 }
 
