@@ -53,7 +53,12 @@
         </div>
       </section>
       <!-- Status Tabs - TASK 26 -->
-      <section class="status-tabs">
+      <section class="status-tabs" style="position: relative;">
+        <!-- Select All Checkbox -->
+        <div style="position: absolute; left: -30px; top: 10px;">
+             <input type="checkbox" id="select-all-main" onclick="toggleSelectAll()" title="Select All Visible">
+        </div>
+        
         <button
           class="tab-btn active"
           data-status="all"
@@ -67,6 +72,9 @@
 
         <button class="tab-btn" onclick="togglePinnedNav()">
           📌 Pinned <span class="tab-count" id="count-pinned">0</span>
+        </button>
+        <button class="tab-btn" onclick="filterLeads('top10')">
+           🏆 Top 10
         </button>
         <button class="tab-btn" onclick="filterLeads('hot')">
           🔥 Hot <span class="tab-count" id="count-hot">0</span>
@@ -101,16 +109,59 @@
           ❌ Ignored <span class="tab-count" id="count-ignored">0</span>
         </button>
       </section>
-      <!-- Pinned Navigation - TASK 28 -->
-      <section class="pinned-nav" id="pinned-nav" style="display: none">
-        <div class="pinned-header">
-          <h3>📌 Pinned Leads - Quick Navigation</h3>
-          <button class="btn-close" onclick="closePinnedNav()">✕</button>
-        </div>
-        <div class="pinned-list" id="pinned-list">
-          <!-- Pinned items will be listed here -->
-        </div>
-      </section>
+      
+      <style>
+          /* Compact View Styles */
+          .lead-card.compact-view {
+              padding: 10px;
+              border-left-width: 5px; /* Keep priority color */
+              display: flex;
+              align-items: center;
+              height: auto;
+              min-height: 0;
+          }
+          .lead-card.compact-view .lead-header {
+              margin-bottom: 0;
+              width: 100%;
+          }
+          .lead-card.compact-view .lead-title {
+              font-size: 14px;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+          }
+          /* Hide everything else in compact mode */
+          .lead-card.compact-view .lead-badges,
+          .lead-card.compact-view .lead-meta,
+          .lead-card.compact-view .lead-text,
+          .lead-card.compact-view .lead-keywords,
+          .lead-card.compact-view .suggested-template,
+          .lead-card.compact-view .lead-actions,
+          .lead-card.compact-view .full-content-expanded,
+          .lead-card.compact-view .loading-inline {
+              display: none !important;
+          }
+      </style>
+
+      <!-- Top 10 Expand Controls - NEW -->
+       <div id="top10-controls" style="display: none; margin-bottom: 20px; padding: 10px; border: 1px dashed #00ff41; text-align: center;">
+          <h3 style="margin: 0 0 10px 0;">🏆 Top 10 High Priority Leads</h3>
+          <div style="display: flex; justify-content: center; gap: 10px;">
+              <button id="btn-expand-toggle" class="btn btn-primary" onclick="toggleTop10View()">
+                 ➕ EXPAND ALL 10 POSTS
+              </button>
+              <button class="btn btn-secondary" onclick="copyAllVisible()">
+                 📋 COPY ALL VISIBLE
+              </button>
+          </div>
+      </div>
+
+       <!-- Bulk Toolbar - NEW -->
+      <div id="bulk-toolbar" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #0d1117; border: 1px solid #00ff41; padding: 15px; border-radius: 8px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+            <strong style="color: #fff; margin-right: 15px;">Selected: <span id="selected-count" style="color: #00ff41;">0</span></strong>
+            <button class="btn btn-primary" onclick="bulkUpdateStatus('contacted')" style="margin-right: 10px;">📧 Mark Contacted</button>
+            <button class="btn btn-danger" onclick="bulkUpdateStatus('ignored')">❌ Ignore</button>
+      </div>
 
       <!-- Action Bar -->
       <section class="action-bar">

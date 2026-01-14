@@ -11,6 +11,11 @@ let currentQuickActionLead = null;
 
 let currentFilter = "all";
 let templates = {};
+// TASK 32: Bulk Actions
+let selectedLeads = new Set();
+let isTop10Expanded = false; // State for toggle
+
+
 
 // Initialize on page load
 document.addEventListener("DOMContentLoaded", function () {
@@ -103,11 +108,22 @@ function displayLeads(leads, options = {}) {
     return;
   }
 
-  container.innerHTML = leads.map((lead) => createLeadCard(lead)).join("");
+  container.innerHTML = leads.map((lead, index) => createLeadCard(lead, index + 1)).join("");
+  
+  // Re-apply selections
+  selectedLeads.forEach(id => {
+      const checkbox = document.querySelector(`.lead-checkbox[data-id="${id}"]`);
+      if(checkbox) checkbox.checked = true;
+      
+      const card = document.querySelector(`.lead-card[data-id="${id}"]`);
+      if(card) card.classList.add('selected');
+  });
+  
+  updateBulkToolbar();
 }
 
 // Create lead card HTML
-function createLeadCard(lead) {
+function createLeadCard(lead, index) {
   const priorityClass = `priority-${lead.priority}`;
   const statusBadge =
     lead.status !== "new"
@@ -128,7 +144,11 @@ function createLeadCard(lead) {
 
        
             <div class="lead-header">
-                <div class="lead-title">${escapeHtml(lead.title)}</div>
+                <div class="lead-title">
+                    <input type="checkbox" class="lead-checkbox" data-id="${lead.id}" onclick="event.stopPropagation(); toggleSelect('${lead.id}')">
+                    <span class="lead-index">#${index}</span> 
+                    ${escapeHtml(lead.title)}
+                </div>
                 <div class="lead-badges">
                     <span class="badge badge-${
                       lead.priority
@@ -421,14 +441,52 @@ function filterLeads(filter) {
     filtered = allLeads.filter((lead) => lead.priority === "cold");
   } else if (filter === "new") {
     filtered = allLeads.filter((lead) => lead.status === "new");
-  }
+  } else if (filter === "top10") {
+      // ✅ Top 10 High Priority
+      filtered = allLeads
+        .filter(lead => !["contacted", "ignored", "converted"].includes(lead.status)) // Only active leads
+        .sort((a, b) => b.score - a.score) // Sort by score descending
+        .slice(0, 10);
+      
+      // Update tab UI manually since it's a custom filter
+       document.querySelectorAll(".tab-btn").forEach((btn) => {
+        btn.classList.remove("active");
+      });
+      document.querySelector("[onclick=\"filterLeads('top10')\"]").classList.add("active");
 
+      // Show the Expand All button
+      checkHideControls('top10');
+      
+      // Reset expansion state when entering tab
+      isTop10Expanded = false;
+      const btn = document.getElementById("btn-expand-toggle");
+      if(btn) btn.innerHTML = "➕ EXPAND ALL 10 POSTS";
+
+      displayLeads(filtered, { bypassStatus: true });
+      return;
+  }
+  
+  checkHideControls(filter);
   displayLeads(filtered);
+}
+
+// Helper to hide custom controls if not needed
+function checkHideControls(filter) {
+    const top10Controls = document.getElementById("top10-controls");
+    if(filter === 'top10') {
+        top10Controls.style.display = 'block';
+    } else {
+        top10Controls.style.display = 'none';
+    }
 }
 
 // Search leads
 function searchLeads() {
   const searchTerm = document.getElementById("searchInput").value.toLowerCase();
+  
+  // Hide special controls when searching
+  document.getElementById("top10-controls").style.display = "none";
+
 
   if (!searchTerm) {
     displayLeads(allLeads);
@@ -972,4 +1030,240 @@ function openPostFromModal() {
   if (postUrl) {
     window.open(postUrl, "_blank");
   }
+}
+
+// ============================================
+// TOP 10 EXPAND ALL FEATURE
+// ============================================
+
+// ============================================
+// TOP 10 EXPAND ALL FEATURE
+// ============================================
+
+async function toggleTop10View() {
+    const btn = document.getElementById("btn-expand-toggle");
+    
+    if (isTop10Expanded) {
+        // CONTRACT
+        contractAllTop10();
+        btn.innerHTML = "➕ EXPAND ALL 10 POSTS";
+        isTop10Expanded = false;
+    } else {
+        // EXPAND
+        await expandAllTop10();
+        btn.innerHTML = "➖ CONTRACT (COMPACT VIEW)";
+        isTop10Expanded = true;
+    }
+}
+
+function contractAllTop10() {
+    const cards = document.querySelectorAll("#leads-container .lead-card");
+    cards.forEach(card => {
+        card.classList.add("compact-view");
+    });
+}
+
+async function expandAllTop10() {
+    // 1. Get all currently displayed lead cards
+    const cards = document.querySelectorAll("#leads-container .lead-card");
+    if(cards.length === 0) {
+        showError("No leads to expand");
+        return;
+    }
+
+    // Remove compact view class first
+    cards.forEach(card => {
+        card.classList.remove("compact-view");
+    });
+
+    // 2. Iterate and fetch full content for each
+    const promises = Array.from(cards).map(async (card) => {
+        const leadId = card.getAttribute("data-id");
+        
+        // Show loading state inline
+        const textContainer = card.querySelector(".lead-text") || card.querySelector(".lead-meta");
+        const loadingMsg = document.createElement("div");
+        loadingMsg.className = "loading-inline";
+        loadingMsg.innerHTML = "⏳ Fetching full post content...";
+        loadingMsg.style.color = "#00ff41";
+        loadingMsg.style.padding = "10px";
+        loadingMsg.style.fontStyle = "italic";
+        
+        if(card.querySelector(".lead-text")) {
+             card.querySelector(".lead-text").appendChild(loadingMsg);
+        } else {
+             card.appendChild(loadingMsg);
+        }
+
+        try {
+            const response = await fetch(`/api/reddit/full/${leadId}`);
+            const data = await response.json();
+            
+            if(data.success) {
+                // Update the card content with full post details
+                updateCardWithFullContent(card, data);
+            } else {
+                loadingMsg.textContent = "❌ Failed to load content";
+            }
+        } catch(err) {
+            console.error(err);
+             loadingMsg.textContent = "❌ Error loading content";
+        }
+    });
+    
+    await Promise.all(promises);
+    showNotification("✅ Expanded top 10 posts!");
+}
+
+function updateCardWithFullContent(card, data) {
+    // Remove existing text/template previews to avoid duplicates if re-run
+    const existingText = card.querySelector(".lead-text");
+    if(existingText) existingText.remove();
+    
+    const existingTemplate = card.querySelector(".suggested-template");
+    if(existingTemplate) existingTemplate.remove();
+
+    // Create full content view
+    const fullContentDiv = document.createElement("div");
+    fullContentDiv.className = "full-content-expanded";
+    fullContentDiv.style.marginTop = "15px";
+    fullContentDiv.style.padding = "15px";
+    fullContentDiv.style.background = "#0d1117";
+    fullContentDiv.style.border = "1px solid #30363d";
+    fullContentDiv.style.borderRadius = "6px";
+    fullContentDiv.style.fontSize = "14px";
+    fullContentDiv.style.whiteSpace = "pre-wrap"; 
+
+    let contentHTML = `<div style="color: #fff; margin-bottom: 10px;"><strong>📄 FULL POST:</strong></div>`;
+    contentHTML += `<div style="color: #c9d1d9;">${escapeHtml(data.selftext || "[No text]")}</div>`;
+    
+    // Add Comments
+    if(data.comments && data.comments.length > 0) {
+        contentHTML += `<div style="margin-top: 20px; padding-top: 10px; border-top: 1px solid #30363d;"><strong>💬 ALL COMMENTS (${data.comments.length}):</strong></div>`;
+        
+        // Removed limit: Show all comments
+        data.comments.forEach(comment => {
+             contentHTML += `
+                <div style="margin-top: 10px; padding-left: 10px; border-left: 2px solid #30363d;">
+                    <div style="color: #8b949e; font-size: 12px;">u/${comment.author} • ${comment.score} pts</div>
+                    <div style="color: #c9d1d9;">${escapeHtml(comment.body)}</div>
+                </div>
+             `;
+        });
+    }
+    
+    fullContentDiv.innerHTML = contentHTML;
+    
+    // Append to card
+    const metaDiv = card.querySelector(".lead-meta");
+    metaDiv.insertAdjacentElement('afterend', fullContentDiv);
+    
+    // Remove loading indicators
+    const loaders = card.querySelectorAll(".loading-inline");
+    loaders.forEach(l => l.remove());
+}
+
+// ============================================
+// BULK ACTION LOGIC
+// ============================================
+
+function toggleSelect(leadId) {
+    const card = document.querySelector(`.lead-card[data-id="${leadId}"]`);
+    const checkbox = document.querySelector(`.lead-checkbox[data-id="${leadId}"]`);
+    
+    if(selectedLeads.has(leadId)) {
+        selectedLeads.delete(leadId);
+        if(card) card.classList.remove('selected');
+        if(checkbox) checkbox.checked = false;
+    } else {
+        selectedLeads.add(leadId);
+        if(card) card.classList.add('selected');
+        if(checkbox) checkbox.checked = true;
+    }
+    
+    updateBulkToolbar();
+}
+
+function toggleSelectAll() {
+    const checkboxes = document.querySelectorAll('.lead-checkbox');
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    
+    checkboxes.forEach(cb => {
+        const leadId = cb.getAttribute('data-id');
+        if(!allChecked) {
+             if(!selectedLeads.has(leadId)) toggleSelect(leadId);
+        } else {
+             if(selectedLeads.has(leadId)) toggleSelect(leadId);
+        }
+    });
+}
+
+function updateBulkToolbar() {
+    const toolbar = document.getElementById('bulk-toolbar');
+    const countSpan = document.getElementById('selected-count');
+    
+    if(selectedLeads.size > 0) {
+        toolbar.style.display = 'flex';
+        countSpan.textContent = selectedLeads.size;
+    } else {
+        toolbar.style.display = 'none';
+    }
+}
+
+async function bulkUpdateStatus(status) {
+    if(selectedLeads.size === 0) return;
+    
+    const count = selectedLeads.size;
+    if(!confirm(`Mark ${count} selected leads as ${status.toUpperCase()}?`)) return;
+    
+    // Process all updates
+    const promises = Array.from(selectedLeads).map(id => updateStatus(id, status));
+    await Promise.all(promises);
+    
+    // Clear selection
+    selectedLeads.clear();
+    updateBulkToolbar();
+    
+    showNotification(`✅ Bulk update complete: ${count} leads marked as ${status}`);
+}
+
+async function copyAllVisible() {
+    const cards = document.querySelectorAll("#leads-container .lead-card");
+    if(cards.length === 0) {
+        showError("No leads to copy");
+        return;
+    }
+    
+    let fullText = "🔥 STATUSMONKEY TOP LEADS EXPORT\n=================================\n\n";
+    
+    // We scrape the text from the DOM elements
+    cards.forEach((card, index) => {
+        const title = card.querySelector(".lead-title").innerText.replace(/#\d+\s/, ''); // Remove index
+        const meta = card.querySelector(".lead-meta").innerText;
+        
+        let body = "";
+        // Check for expanded content first
+        const expanded = card.querySelector(".full-content-expanded");
+        if(expanded) {
+            body = expanded.innerText;
+        } else {
+            // Fallback to preview text
+            const preview = card.querySelector(".lead-text");
+            body = preview ? preview.innerText : "[No text / Not expanded]";
+        }
+        
+        fullText += `LEAD #${index + 1}\n`;
+        fullText += `TITLE: ${title}\n`;
+        fullText += `META: ${meta}\n`;
+        fullText += `CONTENT:\n${body}\n`;
+        fullText += "\n---------------------------------\n\n";
+    });
+    
+    try {
+        await navigator.clipboard.writeText(fullText);
+        showNotification(`✅ Copied ${cards.length} leads to clipboard!`);
+    } catch(err) {
+        console.error(err);
+        showError("Failed to copy to clipboard");
+    }
 }
