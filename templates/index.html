@@ -143,15 +143,34 @@
           }
       </style>
 
-      <!-- Top 10 Expand Controls - NEW -->
+       <!-- Top 10 Expand Controls - NEW -->
        <div id="top10-controls" style="display: none; margin-bottom: 20px; padding: 10px; border: 1px dashed #00ff41; text-align: center;">
           <h3 style="margin: 0 0 10px 0;">🏆 Top 10 High Priority Leads</h3>
           <div style="display: flex; justify-content: center; gap: 10px;">
+              <button class="btn btn-secondary" onclick="toggleSelectAll()">
+                  ✅ SELECT ALL
+              </button>
               <button id="btn-expand-toggle" class="btn btn-primary" onclick="toggleTop10View()">
                  ➕ EXPAND ALL 10 POSTS
               </button>
               <button class="btn btn-secondary" onclick="copyAllVisible()">
                  📋 COPY ALL VISIBLE
+              </button>
+          </div>
+      </div>
+
+      <!-- All Tab Controls - NEW -->
+      <div id="all-controls" style="display: none; margin-bottom: 20px; padding: 10px; border: 1px dashed #00ff41; text-align: center;">
+          <h3 style="margin: 0 0 10px 0;">📋 All New Leads</h3>
+          <div style="display: flex; justify-content: center; gap: 10px;">
+              <button class="btn btn-secondary" onclick="toggleSelectAll()">
+                  ✅ SELECT ALL
+              </button>
+              <button class="btn btn-secondary" onclick="copyAllVisible()">
+                 📋 COPY ALL VISIBLE
+              </button>
+               <button class="btn btn-danger" onclick="clearSelectedLeads()">
+                 🗑️ CLEAR SELECTED
               </button>
           </div>
       </div>

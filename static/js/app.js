@@ -14,6 +14,9 @@ let templates = {};
 // TASK 32: Bulk Actions
 let selectedLeads = new Set();
 let isTop10Expanded = false; // State for toggle
+// TASK: Top 10 Batch State
+let top10BatchIds = new Set();
+let top10BatchIndices = new Map(); // Maps ID -> #Rank (1-10)
 
 
 
@@ -108,7 +111,13 @@ function displayLeads(leads, options = {}) {
     return;
   }
 
-  container.innerHTML = leads.map((lead, index) => createLeadCard(lead, index + 1)).join("");
+  container.innerHTML = leads.map((lead, index) => {
+      // Use fixed batch index if available (Top 10 mode), otherwise regular index
+      const displayIndex = (options.isTop10 && top10BatchIndices.has(lead.id)) 
+          ? top10BatchIndices.get(lead.id) 
+          : index + 1;
+      return createLeadCard(lead, displayIndex);
+  }).join("");
   
   // Re-apply selections
   selectedLeads.forEach(id => {
@@ -442,12 +451,57 @@ function filterLeads(filter) {
   } else if (filter === "new") {
     filtered = allLeads.filter((lead) => lead.status === "new");
   } else if (filter === "top10") {
-      // ✅ Top 10 High Priority
-      filtered = allLeads
-        .filter(lead => !["contacted", "ignored", "converted"].includes(lead.status)) // Only active leads
-        .sort((a, b) => b.score - a.score) // Sort by score descending
-        .slice(0, 10);
+      // ✅ Top 10 Batch Logic
       
+      // 1. Check if we have active items in the current batch
+      let currentBatchValid = false;
+      if (top10BatchIds.size > 0) {
+          // Check if ANY of the batch items are still active (not ignored/contacted/converted)
+          const activeBatchItems = allLeads.filter(l => 
+              top10BatchIds.has(l.id) && 
+              !["contacted", "ignored", "converted"].includes(l.status)
+          );
+          
+          if (activeBatchItems.length > 0) {
+              currentBatchValid = true;
+          }
+      }
+
+      // 2. If no valid batch, create a NEW one
+      if (!currentBatchValid) {
+          console.log("Creating new Top 10 batch...");
+          // Find potential candidates
+          const candidates = allLeads
+              .filter(lead => !["contacted", "ignored", "converted"].includes(lead.status))
+              .sort((a, b) => b.score - a.score)
+              .slice(0, 10);
+          
+          if (candidates.length === 0) {
+             showNotification("⚠️ No active leads available for Top 10!");
+          }
+
+          // Reset batch state
+          top10BatchIds.clear();
+          top10BatchIndices.clear();
+
+          candidates.forEach((lead, index) => {
+              top10BatchIds.add(lead.id);
+              top10BatchIndices.set(lead.id, index + 1); // fixed rank #1-10
+          });
+      }
+
+      // 3. Filter leads to show ONLY what remains of the batch
+      // We want to show items that are IN the batch AND are still active
+      filtered = allLeads.filter(lead => 
+          top10BatchIds.has(lead.id) && 
+          !["contacted", "ignored", "converted"].includes(lead.status)
+      );
+      
+      // Sort them by their ORIGINAL batch index to keep order
+      filtered.sort((a, b) => {
+          return (top10BatchIndices.get(a.id) || 999) - (top10BatchIndices.get(b.id) || 999);
+      });
+
       // Update tab UI manually since it's a custom filter
        document.querySelectorAll(".tab-btn").forEach((btn) => {
         btn.classList.remove("active");
@@ -462,7 +516,7 @@ function filterLeads(filter) {
       const btn = document.getElementById("btn-expand-toggle");
       if(btn) btn.innerHTML = "➕ EXPAND ALL 10 POSTS";
 
-      displayLeads(filtered, { bypassStatus: true });
+      displayLeads(filtered, { bypassStatus: true, isTop10: true });
       return;
   }
   
@@ -473,10 +527,16 @@ function filterLeads(filter) {
 // Helper to hide custom controls if not needed
 function checkHideControls(filter) {
     const top10Controls = document.getElementById("top10-controls");
+    const allControls = document.getElementById("all-controls");
+    
+    // Default to hidden
+    if(top10Controls) top10Controls.style.display = 'none';
+    if(allControls) allControls.style.display = 'none';
+
     if(filter === 'top10') {
-        top10Controls.style.display = 'block';
-    } else {
-        top10Controls.style.display = 'none';
+        if(top10Controls) top10Controls.style.display = 'block';
+    } else if (filter === 'all') {
+        if(allControls) allControls.style.display = 'block';
     }
 }
 
@@ -600,6 +660,9 @@ function filterByStatus(status) {
 
   // Re-render leads with new filter
   displayLeads(allLeads);
+  
+  // Update controls visibility
+  checkHideControls(status);
 }
 // ============================================
 // TASK 26: Count leads per status
@@ -1266,4 +1329,40 @@ async function copyAllVisible() {
         console.error(err);
         showError("Failed to copy to clipboard");
     }
+}
+
+async function clearSelectedLeads() {
+    if(selectedLeads.size === 0) {
+        showError("No leads selected to clear");
+        return;
+    }
+    
+    const count = selectedLeads.size;
+    if(!confirm(`🗑️ Clear ${count} leads? They will be removed from this list but can be re-discovered if found again.`)) return;
+    
+    // Process all deletions
+    const promises = Array.from(selectedLeads).map(async (id) => {
+        try {
+            const response = await fetch(`/api/lead/${id}`, {
+                method: "DELETE"
+            });
+            if(response.ok) {
+                // Remove from local memory
+                const index = allLeads.findIndex(l => l.id === id);
+                if(index > -1) allLeads.splice(index, 1);
+            }
+        } catch(err) {
+            console.error(err);
+        }
+    });
+
+    await Promise.all(promises);
+    
+    // Clear selection and refresh
+    selectedLeads.clear();
+    updateBulkToolbar();
+    updateStatusCounts();
+    displayLeads(allLeads); // Re-render
+    
+    showNotification(`✅ Cleared ${count} leads!`);
 }

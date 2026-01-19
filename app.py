@@ -261,12 +261,24 @@ def scan():
     new_count = scan_reddit()
     return jsonify({'success': True, 'new_leads': new_count})
 
-@app.route('/api/lead/<lead_id>', methods=['PUT'])
-def update_lead(lead_id):
-    """Update lead status or notes"""
-    update = request.json
+@app.route('/api/lead/<lead_id>', methods=['PUT', 'DELETE'])
+def update_or_delete_lead(lead_id):
+    """Update lead status or notes OR delete lead"""
     conn = get_db_connection()
     c = conn.cursor()
+
+    if request.method == 'DELETE':
+        try:
+            c.execute('DELETE FROM leads WHERE id = ?', (lead_id,))
+            conn.commit()
+            conn.close()
+            return jsonify({'success': True, 'message': 'Lead deleted'})
+        except Exception as e:
+            conn.close()
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    # PUT logic for update
+    update = request.json
     
     if 'status' in update:
         c.execute('UPDATE leads SET status = ?, status_updated_at = ? WHERE id = ?',
