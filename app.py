@@ -462,7 +462,7 @@ def parse_comments(comment_list, depth=0):
     return comments
 
 # ============================================
-# SUBREDDIT MANAGEMENT - v1.9
+# SUBREDDIT MANAGEMENT - v2.3
 # ============================================
 
 @app.route('/api/subreddits', methods=['GET'])
@@ -541,7 +541,7 @@ def update_status():
 # ============================================
 
 if __name__ == '__main__':
-    print("🚀 StatusMonkey Lead Finder v1.9 Starting...")
+    print("🚀 StatusMonkey Lead Finder v2.3 Starting...")
     print("📊 Dashboard: http://localhost:5000")
     print("✨ NEW: SQLite database + Subreddit management!")
     app.run(debug=True, port=5000)

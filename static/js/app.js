@@ -871,7 +871,7 @@ function quickAction(action) {
 }
 
 // ============================================
-// SUBREDDIT MANAGEMENT - v1.9
+// SUBREDDIT MANAGEMENT - v2.3
 // ============================================
 
 function openSubredditSettings() {
