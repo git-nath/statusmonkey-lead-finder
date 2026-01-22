@@ -561,10 +561,15 @@ def add_to_notion():
         c = conn.cursor()
         c.execute('SELECT * FROM leads WHERE id = ?', (lead_id,))
         lead = c.fetchone()
-        conn.close()
         
         if not lead:
+            conn.close()
             return jsonify({'success': False, 'error': 'Lead not found'}), 404
+        
+        # Check if already sent to Notion
+        if lead['sent_to_notion'] == 1:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Already sent to Notion', 'already_sent': True}), 400
         
         # Create page in Notion database
         notion.pages.create(
@@ -590,10 +595,87 @@ def add_to_notion():
             }
         )
         
+        # Mark as sent to Notion
+        c.execute('UPDATE leads SET sent_to_notion = 1 WHERE id = ?', (lead_id,))
+        conn.commit()
+        conn.close()
+        
         return jsonify({'success': True, 'message': 'Lead added to Notion successfully'})
         
     except Exception as e:
         print(f"Error adding to Notion: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/notion/add-all', methods=['POST'])
+def add_all_to_notion():
+    """Send all unsent contacted leads to Notion database"""
+    try:
+        # Get all contacted leads that haven't been sent to Notion
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute('''
+            SELECT * FROM leads 
+            WHERE status = 'contacted' 
+            AND (sent_to_notion IS NULL OR sent_to_notion = 0)
+        ''')
+        leads = c.fetchall()
+        
+        if not leads:
+            conn.close()
+            return jsonify({'success': True, 'message': 'No unsent leads to add', 'count': 0})
+        
+        success_count = 0
+        error_count = 0
+        errors = []
+        
+        for lead in leads:
+            try:
+                # Create page in Notion database
+                notion.pages.create(
+                    parent={"database_id": NOTION_DATABASE_ID},
+                    properties={
+                        "Post Title": {
+                            "title": [
+                                {
+                                    "text": {
+                                        "content": lead['title'][:2000]
+                                    }
+                                }
+                            ]
+                        },
+                        "URL": {
+                            "url": lead['url']
+                        },
+                        "Status": {
+                            "select": {
+                                "name": "Contacted"
+                            }
+                        }
+                    }
+                )
+                
+                # Mark as sent
+                c.execute('UPDATE leads SET sent_to_notion = 1 WHERE id = ?', (lead['id'],))
+                success_count += 1
+                
+            except Exception as e:
+                error_count += 1
+                errors.append(f"{lead['title'][:50]}: {str(e)}")
+                print(f"Error sending lead {lead['id']} to Notion: {e}")
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Sent {success_count} leads to Notion',
+            'count': success_count,
+            'errors': error_count,
+            'error_details': errors if errors else None
+        })
+        
+    except Exception as e:
+        print(f"Error in bulk send: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================

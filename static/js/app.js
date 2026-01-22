@@ -260,9 +260,13 @@ function createLeadCard(lead, index) {
                 </button>
                 ${
                   lead.status === 'contacted'
-                    ? `<button class="btn-small btn-notion" onclick="event.stopPropagation(); sendToNotion('${lead.id}')">
-                    📝 Send to Notion
-                </button>`
+                    ? lead.sent_to_notion === 1
+                      ? `<button class="btn-small btn-notion" disabled style="opacity: 0.7;">
+                        ✅ Already Sent
+                      </button>`
+                      : `<button class="btn-small btn-notion" onclick="event.stopPropagation(); sendToNotion('${lead.id}')">
+                        📝 Send to Notion
+                      </button>`
                     : ''
                 }
             </div>
@@ -535,15 +539,19 @@ function filterLeads(filter) {
 function checkHideControls(filter) {
     const top10Controls = document.getElementById("top10-controls");
     const allControls = document.getElementById("all-controls");
+    const contactedControls = document.getElementById("contacted-controls");
     
     // Default to hidden
     if(top10Controls) top10Controls.style.display = 'none';
     if(allControls) allControls.style.display = 'none';
+    if(contactedControls) contactedControls.style.display = 'none';
 
     if(filter === 'top10') {
         if(top10Controls) top10Controls.style.display = 'block';
     } else if (filter === 'all') {
         if(allControls) allControls.style.display = 'block';
+    } else if (filter === 'contacted') {
+        if(contactedControls) contactedControls.style.display = 'block';
     }
 }
 
@@ -669,14 +677,21 @@ async function sendToNotion(leadId) {
     const result = await response.json();
     
     if (result.success) {
-      button.innerHTML = '✅ Sent to Notion';
+      // Update lead in memory
+      const lead = allLeads.find(l => l.id === leadId);
+      if (lead) {
+        lead.sent_to_notion = 1;
+      }
+      
+      button.innerHTML = '✅ Already Sent';
+      button.style.opacity = '0.7';
       showNotification('✅ Lead added to Notion successfully!');
       
-      // Keep the success state for 2 seconds, then restore
-      setTimeout(() => {
-        button.innerHTML = originalText;
-        button.disabled = false;
-      }, 2000);
+    } else if (result.already_sent) {
+      button.innerHTML = '✅ Already Sent';
+      button.style.opacity = '0.7';
+      showNotification('ℹ️ This lead was already sent to Notion');
+      
     } else {
       button.innerHTML = '❌ Failed';
       showError(`Failed to add to Notion: ${result.error}`);
@@ -694,6 +709,64 @@ async function sendToNotion(leadId) {
     // Restore button
     const button = event.target;
     button.innerHTML = '📝 Send to Notion';
+    button.disabled = false;
+  }
+}
+
+// Send all unsent contacted leads to Notion
+async function sendAllToNotion() {
+  try {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    
+    // Show loading state
+    button.innerHTML = '⏳ Sending all...';
+    button.disabled = true;
+    
+    const response = await fetch('/api/notion/add-all', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      // Update all sent leads in memory
+      allLeads.forEach(lead => {
+        if (lead.status === 'contacted' && !lead.sent_to_notion) {
+          lead.sent_to_notion = 1;
+        }
+      });
+      
+      button.innerHTML = `✅ Sent ${result.count} leads`;
+      showNotification(`✅ Successfully sent ${result.count} leads to Notion!`);
+      
+      // Refresh the display to show updated buttons
+      filterByStatus('contacted');
+      
+      // Restore button after 3 seconds
+      setTimeout(() => {
+        button.innerHTML = originalText;
+        button.disabled = false;
+      }, 3000);
+      
+    } else {
+      button.innerHTML = '❌ Failed';
+      showError(`Failed to send leads: ${result.error}`);
+      
+      setTimeout(() => {
+        button.innerHTML = originalText;
+        button.disabled = false;
+      }, 2000);
+    }
+  } catch (error) {
+    console.error('Error sending all to Notion:', error);
+    showError('Failed to send leads to Notion');
+    
+    const button = event.target;
+    button.innerHTML = '📤 Send All to Notion';
     button.disabled = false;
   }
 }

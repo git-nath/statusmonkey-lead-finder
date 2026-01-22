@@ -175,7 +175,20 @@
           </div>
       </div>
 
-       <!-- Bulk Toolbar - NEW -->
+       <!-- Contacted Tab Controls - NEW -->
+       <div id="contacted-controls" style="display: none; margin-bottom: 20px; padding: 10px; border: 1px dashed #9b59b6; text-align: center;">
+           <h3 style="margin: 0 0 10px 0; color: #9b59b6;">📧 Contacted Leads</h3>
+           <div style="display: flex; justify-content: center; gap: 10px;">
+               <button class="btn btn-primary" onclick="sendAllToNotion()" style="border-color: #9b59b6; color: #9b59b6;">
+                   📤 Send All to Notion
+               </button>
+               <button class="btn btn-secondary" onclick="copyAllVisible()">
+                  📋 COPY ALL VISIBLE
+               </button>
+           </div>
+       </div>
+
+        <!-- Bulk Toolbar - NEW -->
       <div id="bulk-toolbar" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #0d1117; border: 1px solid #00ff41; padding: 15px; border-radius: 8px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
             <strong style="color: #fff; margin-right: 15px;">Selected: <span id="selected-count" style="color: #00ff41;">0</span></strong>
             <button class="btn btn-primary" onclick="bulkUpdateStatus('contacted')" style="margin-right: 10px;">📧 Mark Contacted</button>
