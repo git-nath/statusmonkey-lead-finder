@@ -5,8 +5,14 @@ import json
 import sqlite3
 from datetime import datetime
 import os
+from notion_client import Client
 
 app = Flask(__name__)
+
+# Notion API Configuration
+NOTION_API_KEY = "ntn_f92115249684DSCjMeZGcN7j7JU6tPkWrNRskbOj9AQ6zP"
+NOTION_DATABASE_ID = "2f02250cb76880859face42b2ae7fe33"
+notion = Client(auth=NOTION_API_KEY)
 
 # ============================================
 # DATABASE HELPER FUNCTIONS
@@ -534,6 +540,60 @@ def update_status():
         
         return jsonify({'success': True})
     except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================
+# NOTION INTEGRATION
+# ============================================
+
+@app.route('/api/notion/add', methods=['POST'])
+def add_to_notion():
+    """Send a lead to Notion database"""
+    try:
+        data = request.json
+        lead_id = data.get('lead_id')
+        
+        if not lead_id:
+            return jsonify({'success': False, 'error': 'Lead ID required'}), 400
+        
+        # Get lead from database
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute('SELECT * FROM leads WHERE id = ?', (lead_id,))
+        lead = c.fetchone()
+        conn.close()
+        
+        if not lead:
+            return jsonify({'success': False, 'error': 'Lead not found'}), 404
+        
+        # Create page in Notion database
+        notion.pages.create(
+            parent={"database_id": NOTION_DATABASE_ID},
+            properties={
+                "Post Title": {
+                    "title": [
+                        {
+                            "text": {
+                                "content": lead['title'][:2000]  # Notion has a 2000 char limit for titles
+                            }
+                        }
+                    ]
+                },
+                "URL": {
+                    "url": lead['url']
+                },
+                "Status": {
+                    "select": {
+                        "name": "Contacted"
+                    }
+                }
+            }
+        )
+        
+        return jsonify({'success': True, 'message': 'Lead added to Notion successfully'})
+        
+    except Exception as e:
+        print(f"Error adding to Notion: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================

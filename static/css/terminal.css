@@ -422,6 +422,20 @@ body {
   background: rgba(255, 68, 68, 0.2);
 }
 
+.btn-notion {
+  border-color: #9b59b6;
+  color: #9b59b6;
+}
+
+.btn-notion:hover {
+  background: rgba(155, 89, 182, 0.2);
+}
+
+.btn-notion:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Modal */
 .modal {
   display: none;

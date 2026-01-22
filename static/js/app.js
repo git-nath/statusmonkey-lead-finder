@@ -258,6 +258,13 @@ function createLeadCard(lead, index) {
                 }', 'ignored')">
                     ❌ Ignore
                 </button>
+                ${
+                  lead.status === 'contacted'
+                    ? `<button class="btn-small btn-notion" onclick="event.stopPropagation(); sendToNotion('${lead.id}')">
+                    📝 Send to Notion
+                </button>`
+                    : ''
+                }
             </div>
 
         </div>
@@ -635,6 +642,60 @@ function showNotification(message) {
 // Show error
 function showError(message) {
   console.error("❌ Error: " + message); // Silent - just log to console
+}
+
+// ============================================
+// NOTION INTEGRATION
+// ============================================
+
+// Send lead to Notion database
+async function sendToNotion(leadId) {
+  try {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    
+    // Show loading state
+    button.innerHTML = '⏳ Sending...';
+    button.disabled = true;
+    
+    const response = await fetch('/api/notion/add', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ lead_id: leadId }),
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      button.innerHTML = '✅ Sent to Notion';
+      showNotification('✅ Lead added to Notion successfully!');
+      
+      // Keep the success state for 2 seconds, then restore
+      setTimeout(() => {
+        button.innerHTML = originalText;
+        button.disabled = false;
+      }, 2000);
+    } else {
+      button.innerHTML = '❌ Failed';
+      showError(`Failed to add to Notion: ${result.error}`);
+      
+      // Restore button after 2 seconds
+      setTimeout(() => {
+        button.innerHTML = originalText;
+        button.disabled = false;
+      }, 2000);
+    }
+  } catch (error) {
+    console.error('Error sending to Notion:', error);
+    showError('Failed to send to Notion');
+    
+    // Restore button
+    const button = event.target;
+    button.innerHTML = '📝 Send to Notion';
+    button.disabled = false;
+  }
 }
 
 // Escape HTML to prevent XSS
