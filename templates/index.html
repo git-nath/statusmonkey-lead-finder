@@ -175,17 +175,18 @@
           </div>
       </div>
 
-       <!-- Contacted Tab Controls - NEW -->
-       <div id="contacted-controls" style="display: none; margin-bottom: 20px; padding: 10px; border: 1px dashed #9b59b6; text-align: center;">
-           <h3 style="margin: 0 0 10px 0; color: #9b59b6;">📧 Contacted Leads</h3>
+       <!-- Contacted Tab Controls - NOTION INTEGRATION -->
+       <div id="contacted-controls" style="display: none; margin-bottom: 20px; padding: 10px; border: 1px dashed #6366f1; text-align: center;">
+           <h3 style="margin: 0 0 10px 0; color: #6366f1;">📧 Contacted Leads - Notion CRM</h3>
            <div style="display: flex; justify-content: center; gap: 10px;">
-               <button class="btn btn-primary" onclick="sendAllToNotion()" style="border-color: #9b59b6; color: #9b59b6;">
-                   📤 Send All to Notion
+               <button class="btn btn-primary" onclick="sendAllToNotion()" style="background: rgba(99, 102, 241, 0.3); border-color: #6366f1; color: #a5b4fc;">
+                   📤 SEND ALL TO NOTION
                </button>
                <button class="btn btn-secondary" onclick="copyAllVisible()">
                   📋 COPY ALL VISIBLE
                </button>
            </div>
+           <p style="margin: 10px 0 0 0; font-size: 12px; color: #888;">Only unsent leads will be added. Thread numbers assigned automatically.</p>
        </div>
 
         <!-- Bulk Toolbar - NEW -->

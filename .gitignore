@@ -22,7 +22,7 @@ data/
 # OS
 .DS_Store
 Thumbs.db
-
 # databases
 *.db
+*.sqlite
 

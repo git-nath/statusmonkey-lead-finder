@@ -546,16 +546,69 @@ def update_status():
 # NOTION INTEGRATION
 # ============================================
 
+def get_next_thread_number():
+    """Get the next thread number by querying Notion database for the current max"""
+    try:
+        # Query Notion database to find the highest thread number
+        results = notion.databases.query(
+            database_id=NOTION_DATABASE_ID,
+            sorts=[{
+                "property": "Thread Number",
+                "direction": "descending"
+            }],
+            page_size=1
+        )
+        
+        if results['results']:
+            # Get the first (highest) thread number
+            first_page = results['results'][0]
+            thread_prop = first_page['properties'].get('Thread Number', {})
+            
+            # Handle number property type
+            if 'number' in thread_prop and thread_prop['number'] is not None:
+                return int(thread_prop['number']) + 1
+        
+        # If no entries or couldn't parse, start from 1
+        return 1
+    except Exception as e:
+        print(f"Error getting next thread number: {e}")
+        return 1
+
+def ensure_notion_columns():
+    """Ensure the leads table has sent_to_notion and notion_thread_number columns"""
+    conn = get_db_connection()
+    c = conn.cursor()
+    
+    # Check if columns exist, add if not
+    c.execute("PRAGMA table_info(leads)")
+    columns = [col[1] for col in c.fetchall()]
+    
+    if 'sent_to_notion' not in columns:
+        c.execute('ALTER TABLE leads ADD COLUMN sent_to_notion INTEGER DEFAULT 0')
+    
+    if 'notion_thread_number' not in columns:
+        c.execute('ALTER TABLE leads ADD COLUMN notion_thread_number INTEGER')
+    
+    conn.commit()
+    conn.close()
+
+# Ensure columns exist on startup
+ensure_notion_columns()
+
 @app.route('/api/notion/add', methods=['POST'])
 def add_to_notion():
-    """Send a lead to Notion database"""
+    """Send a single lead to Notion database"""
     try:
         data = request.json
         lead_id = data.get('lead_id')
+        thread_number = data.get('thread_number')  # Get thread number from frontend
         
         if not lead_id:
             return jsonify({'success': False, 'error': 'Lead ID required'}), 400
         
+        if not thread_number:
+            return jsonify({'success': False, 'error': 'Thread number required'}), 400
+
         # Get lead from database
         conn = get_db_connection()
         c = conn.cursor()
@@ -569,9 +622,15 @@ def add_to_notion():
         # Check if already sent to Notion
         if lead['sent_to_notion'] == 1:
             conn.close()
-            return jsonify({'success': False, 'error': 'Already sent to Notion', 'already_sent': True}), 400
+            return jsonify({
+                'success': False, 
+                'error': 'Already sent to Notion', 
+                'already_sent': True,
+                'thread_number': lead['notion_thread_number']
+            }), 400
         
-        # Create page in Notion database
+        # Create page in Notion database with the provided thread number
+
         notion.pages.create(
             parent={"database_id": NOTION_DATABASE_ID},
             properties={
@@ -579,7 +638,8 @@ def add_to_notion():
                     "title": [
                         {
                             "text": {
-                                "content": lead['title'][:2000]  # Notion has a 2000 char limit for titles
+                                "content": lead['title'][:2000]  # Notion has a 2000 char limit
+
                             }
                         }
                     ]
@@ -587,6 +647,10 @@ def add_to_notion():
                 "URL": {
                     "url": lead['url']
                 },
+                "Thread Number": {
+                    "number": int(thread_number)
+                },
+
                 "Status": {
                     "select": {
                         "name": "Contacted"
@@ -595,12 +659,18 @@ def add_to_notion():
             }
         )
         
-        # Mark as sent to Notion
-        c.execute('UPDATE leads SET sent_to_notion = 1 WHERE id = ?', (lead_id,))
+        # Mark as sent to Notion and save thread number
+        c.execute('UPDATE leads SET sent_to_notion = 1, notion_thread_number = ? WHERE id = ?', 
+                 (thread_number, lead_id))
         conn.commit()
         conn.close()
         
-        return jsonify({'success': True, 'message': 'Lead added to Notion successfully'})
+        return jsonify({
+            'success': True, 
+            'message': f'Lead added to Notion as #{thread_number}',
+            'thread_number': thread_number
+        })
+
         
     except Exception as e:
         print(f"Error adding to Notion: {e}")
@@ -624,6 +694,9 @@ def add_all_to_notion():
             conn.close()
             return jsonify({'success': True, 'message': 'No unsent leads to add', 'count': 0})
         
+        # Get starting thread number
+        next_thread_number = get_next_thread_number()
+
         success_count = 0
         error_count = 0
         errors = []
@@ -646,6 +719,10 @@ def add_all_to_notion():
                         "URL": {
                             "url": lead['url']
                         },
+                        "Thread Number": {
+                            "number": next_thread_number
+                        },
+
                         "Status": {
                             "select": {
                                 "name": "Contacted"
@@ -654,9 +731,12 @@ def add_all_to_notion():
                     }
                 )
                 
-                # Mark as sent
-                c.execute('UPDATE leads SET sent_to_notion = 1 WHERE id = ?', (lead['id'],))
+                # Mark as sent and save thread number
+                c.execute('UPDATE leads SET sent_to_notion = 1, notion_thread_number = ? WHERE id = ?', 
+                         (next_thread_number, lead['id']))
                 success_count += 1
+                next_thread_number += 1  # Increment for next lead
+
                 
             except Exception as e:
                 error_count += 1
@@ -678,6 +758,27 @@ def add_all_to_notion():
         print(f"Error in bulk send: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/notion/status/<lead_id>')
+def get_notion_status(lead_id):
+    """Check if a lead has been sent to Notion"""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute('SELECT sent_to_notion, notion_thread_number FROM leads WHERE id = ?', (lead_id,))
+        lead = c.fetchone()
+        conn.close()
+        
+        if not lead:
+            return jsonify({'success': False, 'error': 'Lead not found'}), 404
+        
+        return jsonify({
+            'success': True,
+            'sent_to_notion': lead['sent_to_notion'] == 1,
+            'thread_number': lead['notion_thread_number']
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # ============================================
 # START SERVER
 # ============================================
@@ -685,5 +786,6 @@ def add_all_to_notion():
 if __name__ == '__main__':
     print("🚀 StatusMonkey Lead Finder v2.3 Starting...")
     print("📊 Dashboard: http://localhost:5000")
-    print("✨ NEW: SQLite database + Subreddit management!")
+    print("✨ NEW: Notion Integration + Thread Numbers!")
+
     app.run(debug=True, port=5000)

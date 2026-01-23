@@ -248,6 +248,13 @@ function createLeadCard(lead, index) {
                 }', 'contacted')">
                     📧 Mark Contacted
                 </button>
+                ${lead.status === 'contacted' ? `
+                <button class="btn-small ${lead.sent_to_notion ? 'btn-notion-sent' : 'btn-notion'}" 
+                        onclick="event.stopPropagation(); sendToNotion('${lead.id}', ${index})"
+                        style="${lead.sent_to_notion ? 'background: rgba(99, 102, 241, 0.2); border-color: #6366f1; color: #a5b4fc;' : 'background: rgba(99, 102, 241, 0.4); border-color: #6366f1; color: #fff;'}">
+                    ${lead.sent_to_notion ? `✓ Notion #${lead.notion_thread_number || '?'}` : `📤 Send #${index} to Notion`}
+                </button>
+                ` : ''}
                 <button class="btn-small btn-converted" onclick="event.stopPropagation(); markConverted('${
                   lead.id
                 }')">
@@ -1499,4 +1506,80 @@ async function clearSelectedLeads() {
     displayLeads(allLeads); // Re-render
     
     showNotification(`✅ Cleared ${count} leads!`);
+}
+
+// ============================================
+// NOTION INTEGRATION
+// ============================================
+
+async function sendToNotion(leadId, threadNumber) {
+    try {
+        const response = await fetch('/api/notion/add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                lead_id: leadId,
+                thread_number: threadNumber 
+            }),
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification(`✅ Sent to Notion as #${result.thread_number}`);
+            
+            // Update the lead in memory
+            const lead = allLeads.find(l => l.id === leadId);
+            if (lead) {
+                lead.sent_to_notion = 1;
+                lead.notion_thread_number = result.thread_number;
+            }
+            
+            // Refresh the display
+            filterByStatus(currentStatusFilter);
+        } else if (result.already_sent) {
+            showNotification(`ℹ️ Already in Notion as #${result.thread_number}`);
+        } else {
+            showError(`Failed to send to Notion: ${result.error}`);
+        }
+    } catch (error) {
+        console.error('Error sending to Notion:', error);
+        showError('Failed to send to Notion');
+    }
+}
+
+async function sendAllToNotion() {
+    if (!confirm('📤 Send all contacted leads to Notion?\n\nThis will only send leads that have not been sent yet.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/notion/add-all', {
+            method: 'POST',
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            if (result.count > 0) {
+                showNotification(`✅ Sent ${result.count} leads to Notion!`);
+                
+                // Reload leads to get updated sent_to_notion status
+                await loadLeads();
+            } else {
+                showNotification('ℹ️ No new leads to send - all already in Notion');
+            }
+            
+            if (result.errors > 0) {
+                console.error('Some leads failed to send:', result.error_details);
+            }
+        } else {
+            showError(`Failed to send to Notion: ${result.error}`);
+        }
+    } catch (error) {
+        console.error('Error sending all to Notion:', error);
+        showError('Failed to send to Notion');
+    }
 }
