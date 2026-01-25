@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StatusMonkey Admin v2.5</title>
+    <link rel="stylesheet" href="/static/css/terminal.css" />
+  </head>
+  <body>
+    <div class="container">
+      <!-- Navigation Bar -->
+      <nav class="terminal-nav">
+          <a href="/" class="nav-link">📊 Dashboard</a>
+          <a href="/admin" class="nav-link active">🛠️ Admin</a>
+      </nav>
+
+      <!-- Header -->
+      <header class="terminal-header">
+        <h1>🛠️ STATUSMONKEY SYSTEM ADMIN</h1>
+        <p class="subtitle">System Health, Scoring Rules & Advanced Settings</p>
+      </header>
+
+      <!-- Admin Stats Grid -->
+      <section class="stats-grid" id="admin-stats">
+        <div class="stat-card">
+          <div class="stat-label">DB Size</div>
+          <div class="stat-value" id="stat-db-size">0 KB</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Notion Sync</div>
+          <div class="stat-value" id="stat-sync-rate">0%</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Active Subs</div>
+          <div class="stat-value" id="stat-active-subs">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Leads (24h)</div>
+          <div class="stat-value" id="stat-leads-24h">0</div>
+        </div>
+      </section>
+
+      <!-- Main Layout -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+          <!-- Keyword Inspector -->
+          <section class="admin-panel" style="border: 2px solid #00ff00; padding: 20px; background: rgba(0, 255, 0, 0.05);">
+              <h2 style="color: #00ff00; margin-bottom: 20px;">🎯 Scoring Rule Inspector</h2>
+              <div id="keyword-list" style="font-size: 0.9em; max-height: 500px; overflow-y: auto;">
+                  <!-- Keywords will load here -->
+              </div>
+          </section>
+
+          <!-- System Settings & Maintenance -->
+          <section class="admin-panel" style="border: 2px solid #00ffff; padding: 20px; background: rgba(0, 255, 255, 0.05);">
+              <h2 style="color: #00ffff; margin-bottom: 20px;">⚙️ System Maintenance</h2>
+              
+              <div class="maintenance-item" style="margin-bottom: 20px;">
+                  <h3 style="color: #00ffff; font-size: 1.1em;">Database Health</h3>
+                  <p id="system-health" style="color: #00ff00;">Checking...</p>
+              </div>
+
+              <div class="maintenance-actions" style="display: flex; flex-direction: column; gap: 10px;">
+                  <button class="btn btn-secondary" onclick="exportLeads()">💾 Export All Leads (CSV)</button>
+                  <button class="btn btn-secondary" onclick="openSubredditSettings()">⚙️ Manage Subreddits</button>
+                  <p style="font-size: 0.8em; color: #888; margin-top: 10px;">More administrative tools coming soon...</p>
+              </div>
+          </section>
+      </div>
+    </div>
+
+    <!-- Re-use Subreddit Settings Modal -->
+    <div id="subreddit-modal" class="modal" style="display: none">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>⚙️ Subreddit Settings</h2>
+          <button class="modal-close" onclick="closeSubredditModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <h3>📍 Tracked Subreddits</h3>
+          <div id="subreddit-list" class="subreddit-list">
+            <!-- Subreddits will load here -->
+          </div>
+
+          <h3 style="margin-top: 20px">➕ Add New Subreddit</h3>
+          <div class="add-subreddit-form" style="display: flex; gap: 10px;">
+            <input
+              type="text"
+              id="new-subreddit-input"
+              placeholder="Enter subreddit name (e.g., webdev)"
+              style="flex: 1; padding: 10px; border: 1px solid #00ff41; background: #000; color: #00ff41;"
+            />
+            <button class="btn btn-primary" onclick="addSubreddit()">Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="/static/js/admin.js"></script>
+    <!-- We also need shared functions from app.js if any, but better to keep admin.js independent or export/import -->
+    <!-- For now, we'll implement needed logic in admin.js to avoid dependency hell -->
+  </body>
+</html>

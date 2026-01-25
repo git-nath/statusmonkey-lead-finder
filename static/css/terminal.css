@@ -39,6 +39,35 @@ body {
   font-size: 0.9em;
 }
 
+/* Navigation */
+.terminal-nav {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+  padding: 10px;
+  border-bottom: 1px solid #00ff00;
+}
+
+.nav-link {
+  color: #00ff00;
+  text-decoration: none;
+  font-size: 0.9em;
+  padding: 5px 10px;
+  border: 1px transparent solid;
+  transition: all 0.3s;
+}
+
+.nav-link:hover {
+  background: rgba(0, 255, 0, 0.1);
+  border-color: #00ff00;
+}
+
+.nav-link.active {
+  background: rgba(0, 255, 0, 0.2);
+  border-color: #00ff00;
+  font-weight: bold;
+}
+
 /* Stats Grid */
 .stats-grid {
   display: grid;
@@ -709,6 +738,7 @@ body {
   margin-bottom: 5px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
