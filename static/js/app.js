@@ -265,17 +265,7 @@ function createLeadCard(lead, index) {
                 }', 'ignored')">
                     ❌ Ignore
                 </button>
-                ${
-                  lead.status === 'contacted'
-                    ? lead.sent_to_notion === 1
-                      ? `<button class="btn-small btn-notion" disabled style="opacity: 0.7;">
-                        ✅ Already Sent
-                      </button>`
-                      : `<button class="btn-small btn-notion" onclick="event.stopPropagation(); sendToNotion('${lead.id}')">
-                        📝 Send to Notion
-                      </button>`
-                    : ''
-                }
+
             </div>
 
         </div>
@@ -664,11 +654,25 @@ function showError(message) {
 // ============================================
 
 // Send lead to Notion database
-async function sendToNotion(leadId) {
+async function sendToNotion(leadId, threadNumber) {
   try {
     const button = event.target;
     const originalText = button.innerHTML;
     
+    // If threadNumber isn't provided, try to find it from memory
+    if (!threadNumber) {
+        // This is a fallback if called from somewhere without index
+        const lead = allLeads.find(l => l.id === leadId);
+        if (lead) {
+            // Check if we are in Top 10 view or other
+            if (top10BatchIndices.has(leadId)) {
+                threadNumber = top10BatchIndices.get(leadId);
+            } else {
+                threadNumber = allLeads.indexOf(lead) + 1;
+            }
+        }
+    }
+
     // Show loading state
     button.innerHTML = '⏳ Sending...';
     button.disabled = true;
@@ -678,7 +682,10 @@ async function sendToNotion(leadId) {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ lead_id: leadId }),
+      body: JSON.stringify({ 
+          lead_id: leadId,
+          thread_number: threadNumber 
+      }),
     });
     
     const result = await response.json();
@@ -688,14 +695,16 @@ async function sendToNotion(leadId) {
       const lead = allLeads.find(l => l.id === leadId);
       if (lead) {
         lead.sent_to_notion = 1;
+        lead.notion_thread_number = threadNumber;
       }
       
-      button.innerHTML = '✅ Already Sent';
-      button.style.opacity = '0.7';
-      showNotification('✅ Lead added to Notion successfully!');
+      button.innerHTML = `✅ Notion #${threadNumber}`;
+      button.style.background = 'rgba(99, 102, 241, 0.2)';
+      button.style.color = '#a5b4fc';
+      showNotification(`✅ Lead #${threadNumber} added to Notion successfully!`);
       
     } else if (result.already_sent) {
-      button.innerHTML = '✅ Already Sent';
+      button.innerHTML = `✅ Notion #${result.thread_number || '?'}`;
       button.style.opacity = '0.7';
       showNotification('ℹ️ This lead was already sent to Notion');
       
@@ -712,69 +721,96 @@ async function sendToNotion(leadId) {
   } catch (error) {
     console.error('Error sending to Notion:', error);
     showError('Failed to send to Notion');
-    
-    // Restore button
-    const button = event.target;
-    button.innerHTML = '📝 Send to Notion';
-    button.disabled = false;
+    // We can't easily restore the button here because 'event' might be lost in async
   }
 }
 
-// Send all unsent contacted leads to Notion
+// Send all unsent contacted leads to Notion with granular progress
 async function sendAllToNotion() {
+  const button = document.getElementById('btn-send-all-notion');
+  if (!button) return;
+
   try {
-    const button = event.target;
     const originalText = button.innerHTML;
     
+    // 1. Identify unsent contacted leads
+    const unsentLeads = allLeads.filter(l => l.status === 'contacted' && !l.sent_to_notion);
+    
+    if (unsentLeads.length === 0) {
+        showNotification('ℹ️ No unsent contacted leads found.');
+        return;
+    }
+
     // Show loading state
-    button.innerHTML = '⏳ Sending all...';
     button.disabled = true;
     
-    const response = await fetch('/api/notion/add-all', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    const result = await response.json();
-    
-    if (result.success) {
-      // Update all sent leads in memory
-      allLeads.forEach(lead => {
-        if (lead.status === 'contacted' && !lead.sent_to_notion) {
-          lead.sent_to_notion = 1;
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < unsentLeads.length; i++) {
+        const lead = unsentLeads[i];
+        
+        // Update progress on button
+        button.innerHTML = `⏳ Sending ${i + 1}/${unsentLeads.length}...`;
+        
+        // Calculate thread number (mimic existing logic in displayLeads)
+        let threadNumber;
+        if (top10BatchIndices.has(lead.id)) {
+            threadNumber = top10BatchIndices.get(lead.id);
+        } else {
+            threadNumber = allLeads.indexOf(lead) + 1;
         }
-      });
-      
-      button.innerHTML = `✅ Sent ${result.count} leads`;
-      showNotification(`✅ Successfully sent ${result.count} leads to Notion!`);
-      
-      // Refresh the display to show updated buttons
-      filterByStatus('contacted');
-      
-      // Restore button after 3 seconds
-      setTimeout(() => {
-        button.innerHTML = originalText;
-        button.disabled = false;
-      }, 3000);
-      
-    } else {
-      button.innerHTML = '❌ Failed';
-      showError(`Failed to send leads: ${result.error}`);
-      
-      setTimeout(() => {
-        button.innerHTML = originalText;
-        button.disabled = false;
-      }, 2000);
+
+        try {
+            const response = await fetch('/api/notion/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    lead_id: lead.id,
+                    thread_number: threadNumber
+                }),
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                lead.sent_to_notion = 1;
+                lead.notion_thread_number = threadNumber;
+                successCount++;
+            } else {
+                console.error(`Failed to send lead ${lead.id}:`, result.error);
+                failCount++;
+            }
+        } catch (err) {
+            console.error(`Error sending lead ${lead.id}:`, err);
+            failCount++;
+        }
     }
-  } catch (error) {
-    console.error('Error sending all to Notion:', error);
-    showError('Failed to send leads to Notion');
     
-    const button = event.target;
-    button.innerHTML = '📤 Send All to Notion';
+    button.innerHTML = `✅ Done: ${successCount} sent`;
+    if (failCount > 0) {
+        button.innerHTML += ` (${failCount} errors)`;
+        showError(`Finished with ${failCount} errors. Check console for details.`);
+    }
+    
+    showNotification(`✅ Successfully sent ${successCount} leads to Notion!`);
+    
+    // Refresh the display to show updated buttons
+    filterByStatus('contacted');
+    
+    // Restore button after 5 seconds
+    setTimeout(() => {
+      button.innerHTML = originalText;
+      button.disabled = false;
+    }, 5000);
+    
+  } catch (error) {
+    console.error('Error in sendAllToNotion:', error);
+    showError('Failed to send leads to Notion');
     button.disabled = false;
+    button.innerHTML = '📤 Send All to Notion';
   }
 }
 
