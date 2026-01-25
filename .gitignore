@@ -23,6 +23,6 @@ data/
 .DS_Store
 Thumbs.db
 # databases
-*.db
-*.sqlite
+# *.db
+# *.sqlite
 
