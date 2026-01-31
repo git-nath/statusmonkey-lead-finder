@@ -59,6 +59,16 @@
                   <p id="system-health" style="color: #00ff00;">Checking...</p>
               </div>
 
+              <div class="maintenance-item" style="margin-bottom: 20px;">
+                  <h3 style="color: #00ffff; font-size: 1.1em;">Tracked Database Files</h3>
+                  <div id="database-list" style="font-size: 0.9em;">
+                      <!-- Database files will load here -->
+                  </div>
+                  <button class="btn btn-secondary" onclick="loadDatabaseFiles()" style="margin-top: 10px;">
+                      🔄 Refresh DB List
+                  </button>
+              </div>
+
               <div class="maintenance-actions" style="display: flex; flex-direction: column; gap: 10px;">
                   <button class="btn btn-secondary" onclick="exportLeads()">💾 Export All Leads (CSV)</button>
                   <button class="btn btn-secondary" onclick="openSubredditSettings()">⚙️ Manage Subreddits</button>

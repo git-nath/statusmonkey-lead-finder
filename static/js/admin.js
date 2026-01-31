@@ -3,6 +3,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     loadAdminStats();
     loadAdminKeywords();
+    loadDatabaseFiles();
 });
 
 // Load administrative stats
@@ -20,6 +21,40 @@ async function loadAdminStats() {
     } catch (error) {
         console.error('Error loading admin stats:', error);
         showError('Failed to load system stats');
+    }
+}
+
+// Load database files list
+async function loadDatabaseFiles() {
+    try {
+        const response = await fetch('/api/admin/databases');
+        const data = await response.json();
+        const container = document.getElementById('database-list');
+
+        if (!container) return;
+
+        if (!data.databases || data.databases.length === 0) {
+            container.innerHTML = '<p style="color: #888;">No database files found.</p>';
+            return;
+        }
+
+        container.innerHTML = data.databases
+            .map((db) => {
+                const modified = new Date(db.modified_at).toLocaleString();
+                return `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border: 1px solid #00ffff; margin-bottom: 8px;">
+                        <div>
+                            <div style="color: #00ffff; font-weight: bold;">${db.name}</div>
+                            <div style="font-size: 0.8em; color: #ccc;">Modified: ${modified}</div>
+                        </div>
+                        <div style="color: #00ff00;">${db.size_kb} KB</div>
+                    </div>
+                `;
+            })
+            .join('');
+    } catch (error) {
+        console.error('Error loading database files:', error);
+        showError('Failed to load database files');
     }
 }
 

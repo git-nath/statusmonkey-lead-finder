@@ -122,13 +122,18 @@
               padding: 10px;
               border-left-width: 5px; /* Keep priority color */
               display: flex;
-              align-items: center;
+              flex-direction: column;
+              align-items: stretch;
+              gap: 6px;
               height: auto;
               min-height: 0;
           }
           .lead-card.compact-view .lead-header {
               margin-bottom: 0;
               width: 100%;
+              display: flex;
+              flex-direction: column;
+              gap: 6px;
           }
           .lead-card.compact-view .lead-title {
               font-size: 14px;
@@ -142,10 +147,26 @@
           .lead-card.compact-view .lead-text,
           .lead-card.compact-view .lead-keywords,
           .lead-card.compact-view .suggested-template,
-          .lead-card.compact-view .lead-actions,
           .lead-card.compact-view .full-content-expanded,
           .lead-card.compact-view .loading-inline {
               display: none !important;
+          }
+
+          .lead-card.compact-view .lead-actions {
+              display: none !important;
+          }
+
+          .lead-actions-compact {
+              display: none;
+              margin-top: 8px;
+              gap: 8px;
+              flex-wrap: wrap;
+              width: 100%;
+              justify-content: flex-start;
+          }
+
+          .lead-card.compact-view .lead-actions-compact {
+              display: flex;
           }
       </style>
 
@@ -226,6 +247,9 @@
         <button class="btn btn-secondary" onclick="exportLeads()">
           💾 Export CSV
         </button>
+        <button class="btn btn-secondary" onclick="toggleUtilityPanel()">
+          🗒️ Notes & Tasks
+        </button>
       </section>
 
       <!-- Search -->
@@ -249,6 +273,46 @@
         <!-- Leads will be dynamically loaded here -->
       </section>
     </div>
+
+    <aside id="utility-panel" class="utility-panel" aria-hidden="true">
+      <div class="utility-panel-header">
+        <h3>🗒️ Notes & Tasks</h3>
+        <button class="panel-close" onclick="toggleUtilityPanel()">✕</button>
+      </div>
+      <p class="sidebar-help">
+        Keep outreach notes and quick follow-up tasks without leaving the
+        dashboard.
+      </p>
+      <section class="sidebar-panel">
+        <h4>📝 Notes</h4>
+        <div class="sidebar-input">
+          <textarea
+            id="note-input"
+            rows="4"
+            placeholder="Write a note and press Ctrl/⌘ + Enter to save..."
+          ></textarea>
+          <button class="btn btn-secondary" onclick="addNote()">
+            ➕ Add Note
+          </button>
+        </div>
+        <ul id="notes-list" class="sidebar-list"></ul>
+      </section>
+
+      <section class="sidebar-panel">
+        <h4>✅ Task List</h4>
+        <div class="sidebar-input">
+          <input
+            type="text"
+            id="task-input"
+            placeholder="Add a task and press Enter..."
+          />
+          <button class="btn btn-secondary" onclick="addTask()">
+            ➕ Add Task
+          </button>
+        </div>
+        <ul id="task-list" class="sidebar-list"></ul>
+      </section>
+    </aside>
 
     <!-- Reply Template Modal -->
     <div id="template-modal" class="modal" style="display: none">
