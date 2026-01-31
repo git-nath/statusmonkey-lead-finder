@@ -727,6 +727,7 @@ function filterLeads(filter) {
       isTop10Expanded = false;
       const btn = document.getElementById("btn-expand-toggle");
       if(btn) btn.innerHTML = "➕ EXPAND ALL 10 POSTS";
+      setTop10CompactActionsVisible(false);
 
       displayLeads(filtered, { bypassStatus: true, isTop10: true });
       return;
@@ -1492,11 +1493,20 @@ async function toggleTop10View() {
         contractAllTop10();
         btn.innerHTML = "➕ EXPAND ALL 10 POSTS";
         isTop10Expanded = false;
+        setTop10CompactActionsVisible(true);
     } else {
         // EXPAND
         await expandAllTop10();
         btn.innerHTML = "➖ CONTRACT (COMPACT VIEW)";
         isTop10Expanded = true;
+        setTop10CompactActionsVisible(false);
+    }
+}
+
+function setTop10CompactActionsVisible(visible) {
+    const compactActions = document.getElementById("top10-compact-actions");
+    if (compactActions) {
+        compactActions.style.display = visible ? "flex" : "none";
     }
 }
 
@@ -1669,6 +1679,24 @@ async function bulkUpdateStatus(status) {
     updateBulkToolbar();
     
     showNotification(`✅ Bulk update complete: ${count} leads marked as ${status}`);
+}
+
+function openSelectedPosts() {
+    if (selectedLeads.size === 0) {
+        showError("No leads selected to open");
+        return;
+    }
+
+    const count = selectedLeads.size;
+    const label = count === 1 ? "post" : "posts";
+    if (!confirm(`Open ${count} selected ${label} in new tabs?`)) return;
+
+    Array.from(selectedLeads).forEach((id) => {
+        const lead = allLeads.find((item) => item.id === id);
+        if (lead && lead.url) {
+            openPost(lead.url);
+        }
+    });
 }
 
 async function copyAllVisible() {
