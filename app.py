@@ -449,6 +449,30 @@ def get_admin_keywords():
         }
     })
 
+@app.route('/api/admin/databases')
+def get_admin_databases():
+    """List tracked database files in the project root"""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    db_files = []
+
+    for filename in os.listdir(base_dir):
+        if not filename.endswith('.db'):
+            continue
+        path = os.path.join(base_dir, filename)
+        if not os.path.isfile(path):
+            continue
+        size_kb = round(os.path.getsize(path) / 1024, 2)
+        modified_at = datetime.fromtimestamp(os.path.getmtime(path)).isoformat()
+        db_files.append({
+            'name': filename,
+            'size_kb': size_kb,
+            'modified_at': modified_at
+        })
+
+    db_files.sort(key=lambda entry: entry['name'])
+
+    return jsonify({'databases': db_files})
+
 # ============================================
 # REDDIT FULL POST FETCHER - v2.0
 # ============================================
