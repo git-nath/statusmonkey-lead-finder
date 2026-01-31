@@ -358,6 +358,23 @@ function createLeadCard(lead, index) {
                         : ""
                     }
                 </div>
+                <div class="lead-actions-compact">
+                    <button class="btn-small btn-link" onclick="event.stopPropagation(); openPost('${
+                      lead.url
+                    }')">
+                        🔗 Open Post
+                    </button>
+                    <button class="btn-small btn-contacted" onclick="event.stopPropagation(); updateStatus('${
+                      lead.id
+                    }', 'contacted')">
+                        📧 Contacted
+                    </button>
+                    <button class="btn-small btn-ignore" onclick="event.stopPropagation(); updateStatus('${
+                      lead.id
+                    }', 'ignored')">
+                        ❌ Ignore
+                    </button>
+                </div>
 
             </div>
             
@@ -452,24 +469,6 @@ function createLeadCard(lead, index) {
                     ❌ Ignore
                 </button>
 
-            </div>
-
-            <div class="lead-actions-compact">
-                <button class="btn-small btn-link" onclick="event.stopPropagation(); openPost('${
-                  lead.url
-                }')">
-                    🔗 Open Post
-                </button>
-                <button class="btn-small btn-contacted" onclick="event.stopPropagation(); updateStatus('${
-                  lead.id
-                }', 'contacted')">
-                    📧 Contacted
-                </button>
-                <button class="btn-small btn-ignore" onclick="event.stopPropagation(); updateStatus('${
-                  lead.id
-                }', 'ignored')">
-                    ❌ Ignore
-                </button>
             </div>
 
         </div>
