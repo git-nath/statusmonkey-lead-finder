@@ -202,95 +202,96 @@
             <button class="btn btn-danger" onclick="bulkUpdateStatus('ignored')">❌ Ignore</button>
       </div>
 
-      <div class="main-layout">
-        <div class="main-column">
-          <!-- Action Bar -->
-          <section class="action-bar">
-            <button class="btn btn-primary" onclick="scanReddit()">
-              🔍 Scan Reddit Now
-            </button>
+      <!-- Action Bar -->
+      <section class="action-bar">
+        <button class="btn btn-primary" onclick="scanReddit()">
+          🔍 Scan Reddit Now
+        </button>
 
-            <button class="btn btn-secondary" onclick="openSubredditSettings()">
-              ⚙️ Manage Subreddits
-            </button>
-            <button class="btn btn-secondary" onclick="filterLeads('all')">
-              📋 All Leads
-            </button>
-            <button class="btn btn-secondary" onclick="filterLeads('emergency')">
-              🚨 Emergency
-            </button>
-            <button class="btn btn-secondary" onclick="filterLeads('hot')">
-              🔥 Hot Only
-            </button>
-            <button class="btn btn-secondary" onclick="filterLeads('new')">
-              🆕 New Only
-            </button>
-            <button class="btn btn-secondary" onclick="exportLeads()">
-              💾 Export CSV
-            </button>
-          </section>
+        <button class="btn btn-secondary" onclick="openSubredditSettings()">
+          ⚙️ Manage Subreddits
+        </button>
+        <button class="btn btn-secondary" onclick="filterLeads('all')">
+          📋 All Leads
+        </button>
+        <button class="btn btn-secondary" onclick="filterLeads('emergency')">
+          🚨 Emergency
+        </button>
+        <button class="btn btn-secondary" onclick="filterLeads('hot')">
+          🔥 Hot Only
+        </button>
+        <button class="btn btn-secondary" onclick="filterLeads('new')">
+          🆕 New Only
+        </button>
+        <button class="btn btn-secondary" onclick="exportLeads()">
+          💾 Export CSV
+        </button>
+        <button class="btn btn-secondary" onclick="toggleUtilityPanel()">
+          🗒️ Notes & Tasks
+        </button>
+      </section>
 
-          <!-- Search -->
-          <section class="search-box">
-            <input
-              type="text"
-              id="searchInput"
-              placeholder="🔎 Search leads by keyword, subreddit, or author..."
-              onkeyup="searchLeads()"
-            />
-          </section>
+      <!-- Search -->
+      <section class="search-box">
+        <input
+          type="text"
+          id="searchInput"
+          placeholder="🔎 Search leads by keyword, subreddit, or author..."
+          onkeyup="searchLeads()"
+        />
+      </section>
 
-          <!-- Loading Indicator -->
-          <div id="loading" class="loading" style="display: none">
-            <div class="spinner"></div>
-            <p>Scanning Reddit for StatusMonkey leads...</p>
-          </div>
-
-          <!-- Leads Container -->
-          <section id="leads-container" class="leads-container">
-            <!-- Leads will be dynamically loaded here -->
-          </section>
-        </div>
-
-        <aside class="sidebar">
-          <section class="sidebar-panel">
-            <h3>📝 Notes</h3>
-            <p class="sidebar-help">
-              Quick jot pad for outreach ideas or reminders.
-            </p>
-            <div class="sidebar-input">
-              <textarea
-                id="note-input"
-                rows="4"
-                placeholder="Write a note and press Ctrl/⌘ + Enter to save..."
-              ></textarea>
-              <button class="btn btn-secondary" onclick="addNote()">
-                ➕ Add Note
-              </button>
-            </div>
-            <ul id="notes-list" class="sidebar-list"></ul>
-          </section>
-
-          <section class="sidebar-panel">
-            <h3>✅ Task List</h3>
-            <p class="sidebar-help">
-              GitHub-style checklist for follow-ups and experiments.
-            </p>
-            <div class="sidebar-input">
-              <input
-                type="text"
-                id="task-input"
-                placeholder="Add a task and press Enter..."
-              />
-              <button class="btn btn-secondary" onclick="addTask()">
-                ➕ Add Task
-              </button>
-            </div>
-            <ul id="task-list" class="sidebar-list"></ul>
-          </section>
-        </aside>
+      <!-- Loading Indicator -->
+      <div id="loading" class="loading" style="display: none">
+        <div class="spinner"></div>
+        <p>Scanning Reddit for StatusMonkey leads...</p>
       </div>
+
+      <!-- Leads Container -->
+      <section id="leads-container" class="leads-container">
+        <!-- Leads will be dynamically loaded here -->
+      </section>
     </div>
+
+    <aside id="utility-panel" class="utility-panel" aria-hidden="true">
+      <div class="utility-panel-header">
+        <h3>🗒️ Notes & Tasks</h3>
+        <button class="panel-close" onclick="toggleUtilityPanel()">✕</button>
+      </div>
+      <p class="sidebar-help">
+        Keep outreach notes and quick follow-up tasks without leaving the
+        dashboard.
+      </p>
+      <section class="sidebar-panel">
+        <h4>📝 Notes</h4>
+        <div class="sidebar-input">
+          <textarea
+            id="note-input"
+            rows="4"
+            placeholder="Write a note and press Ctrl/⌘ + Enter to save..."
+          ></textarea>
+          <button class="btn btn-secondary" onclick="addNote()">
+            ➕ Add Note
+          </button>
+        </div>
+        <ul id="notes-list" class="sidebar-list"></ul>
+      </section>
+
+      <section class="sidebar-panel">
+        <h4>✅ Task List</h4>
+        <div class="sidebar-input">
+          <input
+            type="text"
+            id="task-input"
+            placeholder="Add a task and press Enter..."
+          />
+          <button class="btn btn-secondary" onclick="addTask()">
+            ➕ Add Task
+          </button>
+        </div>
+        <ul id="task-list" class="sidebar-list"></ul>
+      </section>
+    </aside>
 
     <!-- Reply Template Modal -->
     <div id="template-modal" class="modal" style="display: none">

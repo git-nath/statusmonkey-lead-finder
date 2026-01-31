@@ -20,6 +20,7 @@ let top10BatchIndices = new Map(); // Maps ID -> #Rank (1-10)
 
 const NOTES_STORAGE_KEY = "statusmonkeyNotes";
 const TASKS_STORAGE_KEY = "statusmonkeyTasks";
+const PANEL_OPEN_KEY = "statusmonkeyUtilityPanelOpen";
 
 function getStoredItems(key, fallback) {
   const raw = localStorage.getItem(key);
@@ -55,6 +56,7 @@ document.addEventListener("DOMContentLoaded", function () {
   loadNotes();
   loadTasks();
   setupSidebarInputs();
+  restoreUtilityPanel();
 
   // Default to Today view
 });
@@ -77,6 +79,27 @@ function setupSidebarInputs() {
         addTask();
       }
     });
+  }
+}
+
+function toggleUtilityPanel() {
+  const panel = document.getElementById("utility-panel");
+  if (!panel) return;
+  const isOpen = panel.classList.toggle("open");
+  panel.setAttribute("aria-hidden", (!isOpen).toString());
+  localStorage.setItem(PANEL_OPEN_KEY, JSON.stringify(isOpen));
+}
+
+function restoreUtilityPanel() {
+  const panel = document.getElementById("utility-panel");
+  if (!panel) return;
+  const stored = localStorage.getItem(PANEL_OPEN_KEY);
+  const isOpen = stored ? JSON.parse(stored) : false;
+  if (isOpen) {
+    panel.classList.add("open");
+    panel.setAttribute("aria-hidden", "false");
+  } else {
+    panel.setAttribute("aria-hidden", "true");
   }
 }
 
