@@ -18,6 +18,33 @@ let isTop10Expanded = false; // State for toggle
 let top10BatchIds = new Set();
 let top10BatchIndices = new Map(); // Maps ID -> #Rank (1-10)
 
+const NOTES_STORAGE_KEY = "statusmonkeyNotes";
+const TASKS_STORAGE_KEY = "statusmonkeyTasks";
+
+function getStoredItems(key, fallback) {
+  const raw = localStorage.getItem(key);
+  if (!raw) {
+    return fallback;
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    console.error(`Failed to parse storage for ${key}`, error);
+    return fallback;
+  }
+}
+
+function setStoredItems(key, items) {
+  localStorage.setItem(key, JSON.stringify(items));
+}
+
+function createLocalId(prefix) {
+  if (window.crypto && window.crypto.randomUUID) {
+    return `${prefix}-${window.crypto.randomUUID()}`;
+  }
+  return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+}
+
 
 
 // Initialize on page load
@@ -25,9 +52,145 @@ document.addEventListener("DOMContentLoaded", function () {
   loadLeads();
   loadStats();
   loadTemplates();
+  loadNotes();
+  loadTasks();
+  setupSidebarInputs();
 
   // Default to Today view
 });
+
+function setupSidebarInputs() {
+  const noteInput = document.getElementById("note-input");
+  const taskInput = document.getElementById("task-input");
+
+  if (noteInput) {
+    noteInput.addEventListener("keydown", (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        addNote();
+      }
+    });
+  }
+
+  if (taskInput) {
+    taskInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        addTask();
+      }
+    });
+  }
+}
+
+function loadNotes() {
+  const notes = getStoredItems(NOTES_STORAGE_KEY, []);
+  renderNotes(notes);
+}
+
+function addNote() {
+  const input = document.getElementById("note-input");
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+  const notes = getStoredItems(NOTES_STORAGE_KEY, []);
+  notes.unshift({
+    id: createLocalId("note"),
+    text,
+    createdAt: new Date().toISOString(),
+  });
+  setStoredItems(NOTES_STORAGE_KEY, notes);
+  input.value = "";
+  renderNotes(notes);
+}
+
+function deleteNote(noteId) {
+  const notes = getStoredItems(NOTES_STORAGE_KEY, []);
+  const nextNotes = notes.filter((note) => note.id !== noteId);
+  setStoredItems(NOTES_STORAGE_KEY, nextNotes);
+  renderNotes(nextNotes);
+}
+
+function renderNotes(notes) {
+  const list = document.getElementById("notes-list");
+  if (!list) return;
+  if (notes.length === 0) {
+    list.innerHTML = `<li class="sidebar-item"><p>No notes yet. Add quick reminders here.</p></li>`;
+    return;
+  }
+  list.innerHTML = notes
+    .map((note) => {
+      const formattedDate = new Date(note.createdAt).toLocaleString();
+      return `
+        <li class="sidebar-item">
+          <div>
+            <p>${escapeHtml(note.text)}</p>
+            <div class="item-meta">${formattedDate}</div>
+          </div>
+          <button onclick="deleteNote('${note.id}')">✕</button>
+        </li>
+      `;
+    })
+    .join("");
+}
+
+function loadTasks() {
+  const tasks = getStoredItems(TASKS_STORAGE_KEY, []);
+  renderTasks(tasks);
+}
+
+function addTask() {
+  const input = document.getElementById("task-input");
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+  const tasks = getStoredItems(TASKS_STORAGE_KEY, []);
+  tasks.unshift({
+    id: createLocalId("task"),
+    text,
+    completed: false,
+  });
+  setStoredItems(TASKS_STORAGE_KEY, tasks);
+  input.value = "";
+  renderTasks(tasks);
+}
+
+function toggleTask(taskId) {
+  const tasks = getStoredItems(TASKS_STORAGE_KEY, []);
+  const nextTasks = tasks.map((task) =>
+    task.id === taskId ? { ...task, completed: !task.completed } : task
+  );
+  setStoredItems(TASKS_STORAGE_KEY, nextTasks);
+  renderTasks(nextTasks);
+}
+
+function deleteTask(taskId) {
+  const tasks = getStoredItems(TASKS_STORAGE_KEY, []);
+  const nextTasks = tasks.filter((task) => task.id !== taskId);
+  setStoredItems(TASKS_STORAGE_KEY, nextTasks);
+  renderTasks(nextTasks);
+}
+
+function renderTasks(tasks) {
+  const list = document.getElementById("task-list");
+  if (!list) return;
+  if (tasks.length === 0) {
+    list.innerHTML = `<li class="sidebar-item"><p>No tasks yet. Add your follow-ups here.</p></li>`;
+    return;
+  }
+  list.innerHTML = tasks
+    .map((task) => {
+      return `
+        <li class="sidebar-item">
+          <div class="task-item ${task.completed ? "completed" : ""}">
+            <input type="checkbox" ${
+              task.completed ? "checked" : ""
+            } onclick="toggleTask('${task.id}')">
+            <p>${escapeHtml(task.text)}</p>
+          </div>
+          <button onclick="deleteTask('${task.id}')">✕</button>
+        </li>
+      `;
+    })
+    .join("");
+}
 // Load all leads
 async function loadLeads() {
   try {
