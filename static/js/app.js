@@ -249,6 +249,8 @@ async function loadStats() {
     document.getElementById("stat-warm").textContent = stats.warm;
     document.getElementById("stat-cold").textContent = stats.cold;
     document.getElementById("stat-contacted").textContent = stats.contacted;
+    document.getElementById("stat-contacted-today").textContent =
+      stats.contacted_today || 0;
     document.getElementById("stat-converted").textContent = stats.converted;
     document.getElementById("stat-revenue").textContent =
       "$" + (stats.revenue || 0);
@@ -358,6 +360,23 @@ function createLeadCard(lead, index) {
                         : ""
                     }
                 </div>
+                <div class="lead-actions-compact">
+                    <button class="btn-small btn-link" onclick="event.stopPropagation(); openPost('${
+                      lead.url
+                    }')">
+                        🔗 Open Post
+                    </button>
+                    <button class="btn-small btn-contacted" onclick="event.stopPropagation(); updateStatus('${
+                      lead.id
+                    }', 'contacted')">
+                        📧 Contacted
+                    </button>
+                    <button class="btn-small btn-ignore" onclick="event.stopPropagation(); updateStatus('${
+                      lead.id
+                    }', 'ignored')">
+                        ❌ Ignore
+                    </button>
+                </div>
 
             </div>
             
@@ -452,24 +471,6 @@ function createLeadCard(lead, index) {
                     ❌ Ignore
                 </button>
 
-            </div>
-
-            <div class="lead-actions-compact">
-                <button class="btn-small btn-link" onclick="event.stopPropagation(); openPost('${
-                  lead.url
-                }')">
-                    🔗 Open Post
-                </button>
-                <button class="btn-small btn-contacted" onclick="event.stopPropagation(); updateStatus('${
-                  lead.id
-                }', 'contacted')">
-                    📧 Contacted
-                </button>
-                <button class="btn-small btn-ignore" onclick="event.stopPropagation(); updateStatus('${
-                  lead.id
-                }', 'ignored')">
-                    ❌ Ignore
-                </button>
             </div>
 
         </div>

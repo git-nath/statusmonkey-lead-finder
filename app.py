@@ -338,6 +338,15 @@ def get_stats():
     # Status counts
     c.execute('SELECT COUNT(*) as count FROM leads WHERE status = ?', ('contacted',))
     contacted = c.fetchone()['count']
+
+    # Contacted today
+    c.execute("""
+        SELECT COUNT(*) as count
+        FROM leads
+        WHERE status = 'contacted'
+          AND date(status_updated_at) = date('now', 'localtime')
+    """)
+    contacted_today = c.fetchone()['count']
     
     c.execute('SELECT COUNT(*) as count FROM leads WHERE converted = 1')
     converted = c.fetchone()['count']
@@ -368,6 +377,7 @@ def get_stats():
         'warm': warm,
         'cold': cold,
         'contacted': contacted,
+        'contacted_today': contacted_today,
         'converted': converted,
         'revenue': round(revenue, 2),
         'conversion_rate': round(conversion_rate, 1),
