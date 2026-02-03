@@ -31,6 +31,7 @@ const TASKS_STORAGE_KEY = "statusmonkeyTasks";
 const PANEL_OPEN_KEY = "statusmonkeyUtilityPanelOpen";
 const LAST_OPENED_LEAD_KEY = "statusmonkeyLastOpenedLead";
 const LAST_OPENED_LEAD_TIMESTAMP_KEY = "statusmonkeyLastOpenedLeadAt";
+const OPEN_POST_HIGHLIGHT_CLASS = "highlight";
 
 function getStoredItems(key, fallback) {
   const raw = localStorage.getItem(key);
@@ -892,6 +893,7 @@ function setupOpenPostHighlight() {
     }
   });
   window.addEventListener("pageshow", attemptHighlight);
+  document.addEventListener("click", clearOpenPostHighlight);
 }
 
 function highlightLastOpenedLead(retries) {
@@ -912,11 +914,18 @@ function highlightLastOpenedLead(retries) {
     return;
   }
 
-  leadCard.classList.add("highlight");
+  clearOpenPostHighlight();
+  leadCard.classList.add(OPEN_POST_HIGHLIGHT_CLASS);
   leadCard.scrollIntoView({ behavior: "smooth", block: "center" });
-  setTimeout(() => {
-    leadCard.classList.remove("highlight");
-  }, 1500);
+}
+
+function clearOpenPostHighlight() {
+  const highlighted = document.querySelector(
+    `.lead-card.${OPEN_POST_HIGHLIGHT_CLASS}`
+  );
+  if (highlighted) {
+    highlighted.classList.remove(OPEN_POST_HIGHLIGHT_CLASS);
+  }
 }
 
 // Show notification
