@@ -29,6 +29,7 @@ let marqueeSelectionState = {
 const NOTES_STORAGE_KEY = "statusmonkeyNotes";
 const TASKS_STORAGE_KEY = "statusmonkeyTasks";
 const PANEL_OPEN_KEY = "statusmonkeyUtilityPanelOpen";
+const LAST_OPENED_LEAD_KEY = "statusmonkeyLastOpenedLead";
 
 function getStoredItems(key, fallback) {
   const raw = localStorage.getItem(key);
@@ -66,6 +67,7 @@ document.addEventListener("DOMContentLoaded", function () {
   setupSidebarInputs();
   restoreUtilityPanel();
   setupMarqueeSelection();
+  setupOpenPostHighlight();
 
   // Default to Today view
 });
@@ -370,7 +372,7 @@ function createLeadCard(lead, index) {
                 <div class="lead-actions-compact">
                     <button class="btn-small btn-link" onclick="event.stopPropagation(); openPost('${
                       lead.url
-                    }')">
+                    }', '${lead.id}')">
                         🔗 Open Post
                     </button>
                     <span class="compact-comments">💬 ${lead.comments} comments</span>
@@ -436,7 +438,7 @@ function createLeadCard(lead, index) {
             <div class="lead-actions">
                 <button class="btn-small btn-link" onclick="event.stopPropagation(); openPost('${
                   lead.url
-                }')">
+                }', '${lead.id}')">
                     🔗 Open Post
                 </button>
                 <button class="btn-small btn-copy-full" onclick="event.stopPropagation(); copyFullPost('${
@@ -872,8 +874,26 @@ function exportLeads() {
 }
 
 // Open Reddit post in new tab
-function openPost(url) {
+function openPost(url, leadId) {
+  if (leadId) {
+    localStorage.setItem(LAST_OPENED_LEAD_KEY, leadId);
+  }
   window.open(url, "_blank");
+}
+
+function setupOpenPostHighlight() {
+  window.addEventListener("focus", () => {
+    const leadId = localStorage.getItem(LAST_OPENED_LEAD_KEY);
+    if (!leadId) return;
+    const leadCard = document.querySelector(`.lead-card[data-id="${leadId}"]`);
+    if (!leadCard) return;
+
+    leadCard.classList.add("highlight");
+    leadCard.scrollIntoView({ behavior: "smooth", block: "center" });
+    setTimeout(() => {
+      leadCard.classList.remove("highlight");
+    }, 1500);
+  });
 }
 
 // Show notification
