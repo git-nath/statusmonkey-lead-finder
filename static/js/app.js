@@ -749,13 +749,18 @@ function filterLeads(filter) {
       // Show the Expand All button
       checkHideControls('top10');
       
-      // Reset expansion state when entering tab
-      isTop10Expanded = false;
-      isTop10CompactMode = false;
+      // Preserve expansion state when reloading Top 10
       const btn = document.getElementById("btn-expand-toggle");
-      if(btn) btn.innerHTML = "➕ EXPAND ALL 10 POSTS";
+      if (btn) {
+        btn.innerHTML = isTop10Expanded
+          ? "➖ CONTRACT (COMPACT VIEW)"
+          : "➕ EXPAND ALL 10 POSTS";
+      }
 
       displayLeads(filtered, { bypassStatus: true, isTop10: true });
+      if (isTop10CompactMode && !isTop10Expanded) {
+        contractAllTop10();
+      }
       updateTop10MarqueeMenu();
       return;
   }
@@ -1706,6 +1711,18 @@ function updateTop10MarqueeMenu() {
     } else {
         menu.style.display = "none";
     }
+}
+
+function clearMarqueeSelection() {
+    const selectedIds = Array.from(selectedLeads);
+    selectedIds.forEach((leadId) => {
+        const card = document.querySelector(`.lead-card[data-id="${leadId}"]`);
+        const checkbox = document.querySelector(`.lead-checkbox[data-id="${leadId}"]`);
+        if (card) card.classList.remove("selected");
+        if (checkbox) checkbox.checked = false;
+    });
+    selectedLeads.clear();
+    updateBulkToolbar();
 }
 
 async function bulkUpdateStatus(status) {
