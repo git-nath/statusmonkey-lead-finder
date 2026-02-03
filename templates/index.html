@@ -182,6 +182,40 @@
               color: #8b949e;
               white-space: nowrap;
           }
+
+          #marquee-selection-box {
+              position: fixed;
+              border: 1px dashed #00ff41;
+              background: rgba(0, 255, 65, 0.12);
+              z-index: 2000;
+              pointer-events: none;
+              display: none;
+          }
+
+          .marquee-active {
+              user-select: none;
+              cursor: crosshair;
+          }
+
+          #top10-marquee-menu {
+              position: fixed;
+              right: 20px;
+              bottom: 90px;
+              background: #0d1117;
+              border: 1px solid #00ff41;
+              padding: 10px 12px;
+              border-radius: 8px;
+              display: none;
+              align-items: center;
+              gap: 10px;
+              z-index: 1100;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+          }
+
+          #top10-marquee-menu .count {
+              color: #00ff41;
+              font-weight: 600;
+          }
       </style>
 
        <!-- Top 10 Expand Controls - NEW -->
@@ -235,6 +269,13 @@
             <strong style="color: #fff; margin-right: 15px;">Selected: <span id="selected-count" style="color: #00ff41;">0</span></strong>
             <button class="btn btn-primary" onclick="bulkUpdateStatus('contacted')" style="margin-right: 10px;">📧 Mark Contacted</button>
             <button class="btn btn-danger" onclick="bulkUpdateStatus('ignored')">❌ Ignore</button>
+      </div>
+
+      <div id="top10-marquee-menu">
+            <span>Selected <span id="top10-selected-count" class="count">0</span></span>
+            <button class="btn btn-secondary" onclick="copySelectedFullPosts()">
+                📋 Copy Full Posts
+            </button>
       </div>
 
       <!-- Action Bar -->

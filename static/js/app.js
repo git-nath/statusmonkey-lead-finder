@@ -14,9 +14,17 @@ let templates = {};
 // TASK 32: Bulk Actions
 let selectedLeads = new Set();
 let isTop10Expanded = false; // State for toggle
+let isTop10CompactMode = false;
 // TASK: Top 10 Batch State
 let top10BatchIds = new Set();
 let top10BatchIndices = new Map(); // Maps ID -> #Rank (1-10)
+let marqueeSelectionState = {
+  active: false,
+  startX: 0,
+  startY: 0,
+  currentX: 0,
+  currentY: 0,
+};
 
 const NOTES_STORAGE_KEY = "statusmonkeyNotes";
 const TASKS_STORAGE_KEY = "statusmonkeyTasks";
@@ -57,6 +65,7 @@ document.addEventListener("DOMContentLoaded", function () {
   loadTasks();
   setupSidebarInputs();
   restoreUtilityPanel();
+  setupMarqueeSelection();
 
   // Default to Today view
 });
@@ -333,7 +342,7 @@ function createLeadCard(lead, index) {
   return `
    <div class="lead-card ${priorityClass}" data-id="${
     lead.id
-  }" ondblclick="copyFullPost('${lead.id}')" style="cursor: pointer;">
+  }" ondblclick="handleLeadCardDoubleClick(event, '${lead.id}')" style="cursor: pointer;">
 
 
 
@@ -481,6 +490,14 @@ function createLeadCard(lead, index) {
     `;
 }
 
+function handleLeadCardDoubleClick(event, leadId) {
+  if (isTop10CompactMode) {
+    event.stopPropagation();
+    return;
+  }
+  copyFullPost(leadId);
+}
+
 // Show reply template modal
 function showTemplate(leadId, templateType) {
   const lead = allLeads.find((l) => l.id === leadId);
@@ -617,6 +634,10 @@ function filterLeads(filter) {
 
   const todayBtn = document.getElementById("today-btn");
   currentFilter = filter;
+  if (filter !== "top10") {
+    isTop10CompactMode = false;
+    updateTop10MarqueeMenu();
+  }
 
   let filtered = allLeads;
 
@@ -730,10 +751,12 @@ function filterLeads(filter) {
       
       // Reset expansion state when entering tab
       isTop10Expanded = false;
+      isTop10CompactMode = false;
       const btn = document.getElementById("btn-expand-toggle");
       if(btn) btn.innerHTML = "➕ EXPAND ALL 10 POSTS";
 
       displayLeads(filtered, { bypassStatus: true, isTop10: true });
+      updateTop10MarqueeMenu();
       return;
   }
   
@@ -1394,7 +1417,20 @@ async function copyFullPost(leadId) {
 }
 
 function showFullPostModal(postData) {
-  // Format the content
+  const content = buildFullPostContent(postData);
+
+  /// Show modal and store lead ID + post URL
+  document.getElementById("full-post-content").value = content;
+  document
+    .getElementById("full-post-modal")
+    .setAttribute("data-lead-id", postData.leadId);
+  document
+    .getElementById("full-post-modal")
+    .setAttribute("data-post-url", postData.url);
+  document.getElementById("full-post-modal").style.display = "flex";
+}
+
+function buildFullPostContent(postData) {
   let content = `TITLE: ${postData.title}\n\n`;
   content += `AUTHOR: u/${postData.author}\n`;
   content += `SCORE: ${postData.score} upvotes | ${postData.num_comments} comments\n`;
@@ -1416,15 +1452,7 @@ function showFullPostModal(postData) {
     content += "No comments yet.\n";
   }
 
-  /// Show modal and store lead ID + post URL
-  document.getElementById("full-post-content").value = content;
-  document
-    .getElementById("full-post-modal")
-    .setAttribute("data-lead-id", postData.leadId);
-  document
-    .getElementById("full-post-modal")
-    .setAttribute("data-post-url", postData.url);
-  document.getElementById("full-post-modal").style.display = "flex";
+  return content;
 }
 
 function closeFullPostModal() {
@@ -1503,6 +1531,7 @@ async function toggleTop10View() {
         btn.innerHTML = "➖ CONTRACT (COMPACT VIEW)";
         isTop10Expanded = true;
     }
+    updateTop10MarqueeMenu();
 }
 
 function contractAllTop10() {
@@ -1510,6 +1539,8 @@ function contractAllTop10() {
     cards.forEach(card => {
         card.classList.add("compact-view");
     });
+    isTop10CompactMode = true;
+    updateTop10MarqueeMenu();
 }
 
 async function expandAllTop10() {
@@ -1524,6 +1555,8 @@ async function expandAllTop10() {
     cards.forEach(card => {
         card.classList.remove("compact-view");
     });
+    isTop10CompactMode = false;
+    updateTop10MarqueeMenu();
 
     // 2. Iterate and fetch full content for each
     const promises = Array.from(cards).map(async (card) => {
@@ -1631,6 +1664,7 @@ function toggleSelect(leadId) {
     }
     
     updateBulkToolbar();
+    updateTop10MarqueeMenu();
 }
 
 function toggleSelectAll() {
@@ -1656,6 +1690,21 @@ function updateBulkToolbar() {
         countSpan.textContent = selectedLeads.size;
     } else {
         toolbar.style.display = 'none';
+    }
+
+    updateTop10MarqueeMenu();
+}
+
+function updateTop10MarqueeMenu() {
+    const menu = document.getElementById("top10-marquee-menu");
+    const countSpan = document.getElementById("top10-selected-count");
+    if (!menu || !countSpan) return;
+
+    if (isTop10CompactMode && selectedLeads.size > 0) {
+        menu.style.display = "flex";
+        countSpan.textContent = selectedLeads.size;
+    } else {
+        menu.style.display = "none";
     }
 }
 
@@ -1751,6 +1800,160 @@ async function clearSelectedLeads() {
     displayLeads(allLeads); // Re-render
     
     showNotification(`✅ Cleared ${count} leads!`);
+}
+
+async function copySelectedFullPosts() {
+    if (selectedLeads.size === 0) {
+        showError("No leads selected to copy");
+        return;
+    }
+
+    const cards = Array.from(document.querySelectorAll("#leads-container .lead-card"))
+        .filter(card => selectedLeads.has(card.getAttribute("data-id")));
+    const leadIds = cards.length > 0
+        ? cards.map(card => card.getAttribute("data-id"))
+        : Array.from(selectedLeads);
+
+    let fullText = "STATUSMONKEY SELECTED LEADS EXPORT\n=================================\n\n";
+
+    const results = await Promise.all(
+        leadIds.map(async (id) => {
+            try {
+                const response = await fetch(`/api/reddit/full/${id}`);
+                const data = await response.json();
+                if (data.success) {
+                    return { id, data };
+                }
+                return { id, error: data.error || "Failed to fetch" };
+            } catch (error) {
+                console.error(error);
+                return { id, error: "Failed to fetch" };
+            }
+        })
+    );
+
+    results.forEach((result, index) => {
+        fullText += `LEAD #${index + 1}\n`;
+        if (result.data) {
+            fullText += `${buildFullPostContent(result.data)}\n`;
+        } else {
+            fullText += `ERROR: ${result.error}\n\n`;
+        }
+        fullText += "---------------------------------\n\n";
+    });
+
+    try {
+        await navigator.clipboard.writeText(fullText);
+        showNotification(`✅ Copied ${results.length} full posts to clipboard!`);
+    } catch (error) {
+        console.error(error);
+        showError("Failed to copy to clipboard");
+    }
+}
+
+function setupMarqueeSelection() {
+    const container = document.getElementById("leads-container");
+    if (!container) return;
+
+    container.addEventListener("mousedown", (event) => {
+        if (!isTop10CompactMode) return;
+        if (event.button !== 0) return;
+        if (event.detail !== 2) return;
+        if (event.target.closest("button, a, input, .lead-checkbox")) return;
+
+        marqueeSelectionState.active = true;
+        marqueeSelectionState.startX = event.pageX;
+        marqueeSelectionState.startY = event.pageY;
+        marqueeSelectionState.currentX = event.pageX;
+        marqueeSelectionState.currentY = event.pageY;
+
+        let box = document.getElementById("marquee-selection-box");
+        if (!box) {
+            box = document.createElement("div");
+            box.id = "marquee-selection-box";
+            document.body.appendChild(box);
+        }
+
+        box.style.display = "block";
+        document.body.classList.add("marquee-active");
+        updateMarqueeBox();
+    });
+
+    document.addEventListener("mousemove", (event) => {
+        if (!marqueeSelectionState.active) return;
+        marqueeSelectionState.currentX = event.pageX;
+        marqueeSelectionState.currentY = event.pageY;
+        updateMarqueeBox();
+    });
+
+    document.addEventListener("mouseup", () => {
+        if (!marqueeSelectionState.active) return;
+        marqueeSelectionState.active = false;
+        document.body.classList.remove("marquee-active");
+
+        const box = document.getElementById("marquee-selection-box");
+        if (box) {
+            box.style.display = "none";
+        }
+
+        selectLeadsInMarquee();
+    });
+}
+
+function updateMarqueeBox() {
+    const box = document.getElementById("marquee-selection-box");
+    if (!box) return;
+
+    const left = Math.min(marqueeSelectionState.startX, marqueeSelectionState.currentX);
+    const top = Math.min(marqueeSelectionState.startY, marqueeSelectionState.currentY);
+    const right = Math.max(marqueeSelectionState.startX, marqueeSelectionState.currentX);
+    const bottom = Math.max(marqueeSelectionState.startY, marqueeSelectionState.currentY);
+
+    box.style.left = `${left}px`;
+    box.style.top = `${top}px`;
+    box.style.width = `${right - left}px`;
+    box.style.height = `${bottom - top}px`;
+}
+
+function selectLeadsInMarquee() {
+    if (!isTop10CompactMode) return;
+
+    const left = Math.min(marqueeSelectionState.startX, marqueeSelectionState.currentX);
+    const top = Math.min(marqueeSelectionState.startY, marqueeSelectionState.currentY);
+    const right = Math.max(marqueeSelectionState.startX, marqueeSelectionState.currentX);
+    const bottom = Math.max(marqueeSelectionState.startY, marqueeSelectionState.currentY);
+
+    const selectionRect = {
+        left,
+        top,
+        right,
+        bottom,
+    };
+
+    const cards = document.querySelectorAll("#leads-container .lead-card");
+    cards.forEach((card) => {
+        const rect = card.getBoundingClientRect();
+        const cardRect = {
+            left: rect.left + window.scrollX,
+            top: rect.top + window.scrollY,
+            right: rect.right + window.scrollX,
+            bottom: rect.bottom + window.scrollY,
+        };
+
+        const intersects = !(
+            selectionRect.right < cardRect.left ||
+            selectionRect.left > cardRect.right ||
+            selectionRect.bottom < cardRect.top ||
+            selectionRect.top > cardRect.bottom
+        );
+
+        if (intersects) {
+            const leadId = card.getAttribute("data-id");
+            if (!selectedLeads.has(leadId)) {
+                toggleSelect(leadId);
+            }
+        }
+    });
 }
 
 // ============================================
