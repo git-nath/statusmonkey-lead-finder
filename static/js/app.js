@@ -364,6 +364,12 @@ function createLeadCard(lead, index) {
                     }')">
                         🔗 Open Post
                     </button>
+                    <span class="compact-comments">💬 ${lead.comments} comments</span>
+                    <button class="btn-small btn-copy-full" onclick="event.stopPropagation(); copyFullPost('${
+                      lead.id
+                    }')">
+                        📋 Copy Full
+                    </button>
                     <button class="btn-small btn-contacted" onclick="event.stopPropagation(); updateStatus('${
                       lead.id
                     }', 'contacted')">
