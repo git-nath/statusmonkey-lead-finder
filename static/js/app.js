@@ -30,6 +30,7 @@ const NOTES_STORAGE_KEY = "statusmonkeyNotes";
 const TASKS_STORAGE_KEY = "statusmonkeyTasks";
 const PANEL_OPEN_KEY = "statusmonkeyUtilityPanelOpen";
 const LAST_OPENED_LEAD_KEY = "statusmonkeyLastOpenedLead";
+const LAST_OPENED_LEAD_TIMESTAMP_KEY = "statusmonkeyLastOpenedLeadAt";
 
 function getStoredItems(key, fallback) {
   const raw = localStorage.getItem(key);
@@ -877,23 +878,45 @@ function exportLeads() {
 function openPost(url, leadId) {
   if (leadId) {
     localStorage.setItem(LAST_OPENED_LEAD_KEY, leadId);
+    localStorage.setItem(LAST_OPENED_LEAD_TIMESTAMP_KEY, Date.now().toString());
   }
   window.open(url, "_blank");
 }
 
 function setupOpenPostHighlight() {
-  window.addEventListener("focus", () => {
-    const leadId = localStorage.getItem(LAST_OPENED_LEAD_KEY);
-    if (!leadId) return;
-    const leadCard = document.querySelector(`.lead-card[data-id="${leadId}"]`);
-    if (!leadCard) return;
-
-    leadCard.classList.add("highlight");
-    leadCard.scrollIntoView({ behavior: "smooth", block: "center" });
-    setTimeout(() => {
-      leadCard.classList.remove("highlight");
-    }, 1500);
+  const attemptHighlight = () => highlightLastOpenedLead(6);
+  window.addEventListener("focus", attemptHighlight);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      attemptHighlight();
+    }
   });
+  window.addEventListener("pageshow", attemptHighlight);
+}
+
+function highlightLastOpenedLead(retries) {
+  const leadId = localStorage.getItem(LAST_OPENED_LEAD_KEY);
+  if (!leadId) return;
+  const lastOpenedAt = Number(
+    localStorage.getItem(LAST_OPENED_LEAD_TIMESTAMP_KEY) || "0"
+  );
+  if (Date.now() - lastOpenedAt > 5 * 60 * 1000) {
+    return;
+  }
+
+  const leadCard = document.querySelector(`.lead-card[data-id="${leadId}"]`);
+  if (!leadCard) {
+    if (retries > 0) {
+      setTimeout(() => highlightLastOpenedLead(retries - 1), 300);
+    }
+    return;
+  }
+
+  leadCard.classList.add("highlight");
+  leadCard.scrollIntoView({ behavior: "smooth", block: "center" });
+  setTimeout(() => {
+    leadCard.classList.remove("highlight");
+  }, 1500);
 }
 
 // Show notification
