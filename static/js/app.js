@@ -349,8 +349,10 @@ function createLeadCard(lead, index) {
     ? `<span class="badge badge-converted">✓ CONVERTED</span>`
     : "";
 
+  const compactClass = currentFilter === "all" ? " compact-view" : "";
+
   return `
-   <div class="lead-card ${priorityClass}" data-id="${
+   <div class="lead-card ${priorityClass}${compactClass}" data-id="${
     lead.id
   }" onclick="handleLeadCardClick(event, '${lead.id}')" ondblclick="handleLeadCardDoubleClick(event, '${lead.id}')" style="cursor: pointer;">
 
