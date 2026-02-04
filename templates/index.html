@@ -220,19 +220,38 @@
           .top10-actions {
               display: grid;
               grid-template-columns: auto auto auto;
+              grid-template-rows: auto auto;
               justify-content: center;
               align-items: center;
               column-gap: 10px;
+              row-gap: 6px;
           }
 
           .top10-select-stack {
-              display: grid;
-              grid-template-rows: auto auto;
-              row-gap: 6px;
-              justify-items: center;
+              display: contents;
+          }
+
+          .top10-select-primary {
+              grid-column: 1;
+              grid-row: 1;
+              justify-self: center;
+          }
+
+          .top10-expand-primary {
+              grid-column: 2;
+              grid-row: 1;
+              justify-self: center;
+          }
+
+          .top10-copy-primary {
+              grid-column: 3;
+              grid-row: 1;
+              justify-self: center;
           }
 
           .top10-select-secondary {
+              grid-column: 1 / 4;
+              grid-row: 2;
               display: flex;
               gap: 8px;
               justify-content: center;
@@ -268,7 +287,7 @@
        <div id="top10-controls" style="display: none; margin-bottom: 20px; padding: 6px 10px; border: 1px dashed #00ff41; text-align: center;">
           <div class="top10-actions">
               <div class="top10-select-stack">
-                  <button class="btn btn-secondary" onclick="toggleSelectAll()">
+                  <button class="btn btn-secondary top10-select-primary" onclick="toggleSelectAll()">
                       ✅ SELECT ALL
                   </button>
                   <div id="top10-select-secondary" class="top10-select-secondary">
@@ -280,10 +299,10 @@
                       </button>
                   </div>
               </div>
-              <button id="btn-expand-toggle" class="btn btn-primary" onclick="toggleTop10View()">
+              <button id="btn-expand-toggle" class="btn btn-primary top10-expand-primary" onclick="toggleTop10View()">
                  ➕ EXPAND ALL 10 POSTS
               </button>
-              <button class="btn btn-secondary" onclick="copyAllVisible()">
+              <button class="btn btn-secondary top10-copy-primary" onclick="copyAllVisible()">
                  📋 COPY ALL VISIBLE
               </button>
           </div>
