@@ -225,6 +225,9 @@
               <button class="btn btn-secondary" onclick="toggleSelectAll()">
                   ✅ SELECT ALL
               </button>
+              <button id="btn-copy-selected-full" class="btn btn-secondary" style="display: none;" data-default-label="📋 COPY SELECTED FULL POSTS" onclick="copySelectedFullPosts(this)">
+                 📋 COPY SELECTED FULL POSTS
+              </button>
               <button id="btn-expand-toggle" class="btn btn-primary" onclick="toggleTop10View()">
                  ➕ EXPAND ALL 10 POSTS
               </button>
@@ -273,7 +276,7 @@
 
       <div id="top10-marquee-menu">
             <span>Selected <span id="top10-selected-count" class="count">0</span></span>
-            <button class="btn btn-secondary" onclick="copySelectedFullPosts()">
+            <button class="btn btn-secondary" data-default-label="📋 Copy Full Posts" onclick="copySelectedFullPosts(this)">
                 📋 Copy Full Posts
             </button>
             <button class="btn btn-secondary" onclick="clearMarqueeSelection()">

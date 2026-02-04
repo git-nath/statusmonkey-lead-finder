@@ -1778,6 +1778,8 @@ function updateTop10MarqueeMenu() {
     } else {
         menu.style.display = "none";
     }
+
+    updateTop10CopySelectedButton();
 }
 
 function clearMarqueeSelection() {
@@ -1790,6 +1792,17 @@ function clearMarqueeSelection() {
     });
     selectedLeads.clear();
     updateBulkToolbar();
+}
+
+function updateTop10CopySelectedButton() {
+    const button = document.getElementById("btn-copy-selected-full");
+    if (!button) return;
+    if (selectedLeads.size > 0) {
+        button.style.display = "inline-flex";
+        button.textContent = `📋 COPY SELECTED FULL POSTS (${selectedLeads.size})`;
+    } else {
+        button.style.display = "none";
+    }
 }
 
 async function bulkUpdateStatus(status) {
@@ -1886,10 +1899,20 @@ async function clearSelectedLeads() {
     showNotification(`✅ Cleared ${count} leads!`);
 }
 
-async function copySelectedFullPosts() {
+async function copySelectedFullPosts(button) {
     if (selectedLeads.size === 0) {
         showError("No leads selected to copy");
         return;
+    }
+
+    const targetButton = button || null;
+    let originalLabel = "";
+    if (targetButton) {
+        originalLabel =
+            targetButton.getAttribute("data-default-label") ||
+            targetButton.textContent;
+        targetButton.textContent = "⏳ COPYING FULL POSTS...";
+        targetButton.disabled = true;
     }
 
     const cards = Array.from(document.querySelectorAll("#leads-container .lead-card"))
@@ -1932,6 +1955,11 @@ async function copySelectedFullPosts() {
     } catch (error) {
         console.error(error);
         showError("Failed to copy to clipboard");
+    } finally {
+        if (targetButton) {
+            targetButton.disabled = false;
+            targetButton.textContent = originalLabel;
+        }
     }
 }
 
