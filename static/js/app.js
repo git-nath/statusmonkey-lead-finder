@@ -692,6 +692,7 @@ function updateDailyGoalDisplay() {
   const goalEl = document.getElementById("daily-contact-goal");
   const banner = document.getElementById("daily-goal-banner");
   const bannerCount = document.getElementById("daily-goal-banner-count");
+  const bannerGoal = document.getElementById("daily-goal-banner-goal");
 
   if (countEl) countEl.textContent = count.toString();
   if (goalEl) goalEl.textContent = goal.toString();
@@ -700,6 +701,7 @@ function updateDailyGoalDisplay() {
     if (goal > 0 && count >= goal) {
       banner.style.display = "block";
       bannerCount.textContent = count.toString();
+      if (bannerGoal) bannerGoal.textContent = goal.toString();
     } else {
       banner.style.display = "none";
     }
