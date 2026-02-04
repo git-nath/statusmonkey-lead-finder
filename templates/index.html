@@ -216,17 +216,62 @@
               color: #00ff41;
               font-weight: 600;
           }
+
+          .top10-actions {
+              display: flex;
+              justify-content: center;
+              gap: 10px;
+              align-items: center;
+              flex-wrap: wrap;
+          }
+
+          .top10-select-stack {
+              display: flex;
+              flex-direction: column;
+              gap: 6px;
+              align-items: center;
+          }
+
+          .top10-select-secondary {
+              display: flex;
+              gap: 8px;
+              justify-content: center;
+              max-height: 0;
+              opacity: 0;
+              transform: translateY(-6px);
+              transition: max-height 0.25s ease, opacity 0.25s ease, transform 0.25s ease;
+              overflow: hidden;
+          }
+
+          .top10-select-secondary.is-visible {
+              max-height: 48px;
+              opacity: 1;
+              transform: translateY(0);
+          }
+
+          .top10-select-secondary .btn {
+              transition: transform 0.2s ease, box-shadow 0.2s ease;
+          }
+
+          .top10-select-secondary.is-visible .btn {
+              animation: pop-in 0.25s ease;
+          }
+
+          @keyframes pop-in {
+              0% { transform: scale(0.96); opacity: 0.6; }
+              100% { transform: scale(1); opacity: 1; }
+          }
       </style>
 
        <!-- Top 10 Expand Controls - NEW -->
        <div id="top10-controls" style="display: none; margin-bottom: 20px; padding: 10px; border: 1px dashed #00ff41; text-align: center;">
           <h3 style="margin: 0 0 10px 0;">🏆 Top 10 High Priority Leads</h3>
-          <div style="display: flex; justify-content: center; gap: 10px; align-items: flex-start;">
-              <div style="display: flex; flex-direction: column; gap: 8px; align-items: center;">
+          <div class="top10-actions">
+              <div class="top10-select-stack">
                   <button class="btn btn-secondary" onclick="toggleSelectAll()">
                       ✅ SELECT ALL
                   </button>
-                  <div style="display: flex; gap: 8px; justify-content: center;">
+                  <div id="top10-select-secondary" class="top10-select-secondary">
                       <button id="btn-ignore-selected-top10" class="btn btn-danger" style="display: none;" data-default-label="❌ IGNORE SELECTED" onclick="bulkUpdateStatus('ignored')">
                          ❌ IGNORE SELECTED
                       </button>
