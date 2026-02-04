@@ -304,9 +304,7 @@
               <button id="btn-expand-toggle" class="btn btn-primary top10-expand-primary" onclick="toggleTop10View()">
                  ➕ EXPAND ALL 10 POSTS
               </button>
-              <button class="btn btn-secondary top10-copy-primary" onclick="copyAllVisible()">
-                 📋 COPY ALL VISIBLE
-              </button>
+              
           </div>
       </div>
 
@@ -316,9 +314,6 @@
           <div style="display: flex; justify-content: center; gap: 10px;">
               <button class="btn btn-secondary" onclick="toggleSelectAll()">
                   ✅ SELECT ALL
-              </button>
-              <button class="btn btn-secondary" onclick="copyAllVisible()">
-                 📋 COPY ALL VISIBLE
               </button>
                <button class="btn btn-danger" onclick="clearSelectedLeads()">
                  🗑️ CLEAR SELECTED
@@ -333,9 +328,6 @@
                 <button id="btn-send-all-notion" class="btn btn-primary" onclick="sendAllToNotion()" style="background: rgba(99, 102, 241, 0.3); border-color: #6366f1; color: #a5b4fc;">
                     📤 SEND ALL TO NOTION
                 </button>
-               <button class="btn btn-secondary" onclick="copyAllVisible()">
-                  📋 COPY ALL VISIBLE
-               </button>
            </div>
            <p style="margin: 10px 0 0 0; font-size: 12px; color: #888;">Only unsent leads will be added. Thread numbers assigned automatically.</p>
        </div>
@@ -358,21 +350,7 @@
         <button class="btn btn-secondary" onclick="openSubredditSettings()">
           ⚙️ Manage Subreddits
         </button>
-        <button class="btn btn-secondary" onclick="filterLeads('all')">
-          📋 All Leads
-        </button>
-        <button class="btn btn-secondary" onclick="filterLeads('emergency')">
-          🚨 Emergency
-        </button>
-        <button class="btn btn-secondary" onclick="filterLeads('hot')">
-          🔥 Hot Only
-        </button>
-        <button class="btn btn-secondary" onclick="filterLeads('new')">
-          🆕 New Only
-        </button>
-        <button class="btn btn-secondary" onclick="exportLeads()">
-          💾 Export CSV
-        </button>
+        
         <button class="btn btn-secondary" onclick="toggleUtilityPanel()">
           🗒️ Notes & Tasks
         </button>
