@@ -218,34 +218,36 @@
           }
 
           .top10-actions {
-              display: flex;
+              display: grid;
+              grid-template-columns: auto auto auto;
               justify-content: center;
-              gap: 10px;
               align-items: center;
+              column-gap: 10px;
           }
 
           .top10-select-stack {
-              display: flex;
-              flex-direction: column;
-              gap: 4px;
-              align-items: center;
+              display: grid;
+              grid-template-rows: auto auto;
+              row-gap: 6px;
+              justify-items: center;
           }
 
           .top10-select-secondary {
               display: flex;
               gap: 8px;
               justify-content: center;
-              max-height: 0;
+              min-height: 36px;
+              max-height: 36px;
               opacity: 0;
               transform: translateY(-6px);
-              transition: max-height 0.25s ease, opacity 0.25s ease, transform 0.25s ease;
-              overflow: hidden;
+              transition: opacity 0.25s ease, transform 0.25s ease;
+              pointer-events: none;
           }
 
           .top10-select-secondary.is-visible {
-              max-height: 48px;
               opacity: 1;
               transform: translateY(0);
+              pointer-events: auto;
           }
 
           .top10-select-secondary .btn {
@@ -263,8 +265,7 @@
       </style>
 
        <!-- Top 10 Expand Controls - NEW -->
-       <div id="top10-controls" style="display: none; margin-bottom: 20px; padding: 6px; border: 1px dashed #00ff41; text-align: center;">
-          <h3 style="margin: 0 0 4px 0;">🏆 Top 10 High Priority Leads</h3>
+       <div id="top10-controls" style="display: none; margin-bottom: 20px; padding: 6px 10px; border: 1px dashed #00ff41; text-align: center;">
           <div class="top10-actions">
               <div class="top10-select-stack">
                   <button class="btn btn-secondary" onclick="toggleSelectAll()">
