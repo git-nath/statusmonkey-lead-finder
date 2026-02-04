@@ -41,13 +41,24 @@
           <div class="stat-label">⚡ Warm</div>
           <div class="stat-value" id="stat-warm">0</div>
         </div>
-        <div class="stat-card cold">
-          <div class="stat-label">❄️ Cold</div>
-          <div class="stat-value" id="stat-cold">0</div>
-        </div>
         <div class="stat-card">
           <div class="stat-label">📧 Contacted</div>
           <div class="stat-value" id="stat-contacted">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">🎯 Daily Contact Goal</div>
+          <div class="stat-value">
+            <span id="daily-contact-count">0</span> / <span id="daily-contact-goal">0</span>
+          </div>
+          <div style="margin-top: 8px;">
+            <input
+              id="daily-goal-input"
+              type="number"
+              min="0"
+              placeholder="Set goal"
+              style="width: 100%; padding: 6px 8px; background: #0d1117; border: 1px solid #30363d; color: #e6edf3; border-radius: 6px;"
+            />
+          </div>
         </div>
         <div class="stat-card">
           <div class="stat-label">💰 Converted</div>
@@ -58,6 +69,9 @@
           <div class="stat-value" id="stat-revenue">$0</div>
         </div>
       </section>
+      <div id="daily-goal-banner" style="display: none; margin: 12px 0 22px; padding: 14px 18px; border: 1px solid #58a6ff; border-radius: 12px; color: #c9d1d9; text-align: center; background: rgba(88, 166, 255, 0.12); box-shadow: 0 0 16px rgba(88, 166, 255, 0.25); font-weight: 600;">
+        ✅ Daily goal achieved — Contacts today: <span id="daily-goal-banner-count">0</span>
+      </div>
       <!-- Status Tabs - TASK 26 -->
       <section class="status-tabs" style="position: relative;">
         <!-- Select All Checkbox -->
@@ -182,21 +196,126 @@
               color: #8b949e;
               white-space: nowrap;
           }
+
+          #marquee-selection-box {
+              position: fixed;
+              border: 1px dashed #00ff41;
+              background: rgba(0, 255, 65, 0.12);
+              z-index: 2000;
+              pointer-events: none;
+              display: none;
+          }
+
+          .marquee-active {
+              user-select: none;
+              cursor: crosshair;
+          }
+
+          #top10-marquee-menu {
+              position: fixed;
+              right: 20px;
+              bottom: 90px;
+              background: #0d1117;
+              border: 1px solid #00ff41;
+              padding: 10px 12px;
+              border-radius: 8px;
+              display: none;
+              align-items: center;
+              gap: 10px;
+              z-index: 1100;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+          }
+
+          #top10-marquee-menu .count {
+              color: #00ff41;
+              font-weight: 600;
+          }
+
+          .top10-actions {
+              display: grid;
+              grid-template-columns: auto auto auto;
+              justify-content: center;
+              align-items: center;
+              column-gap: 10px;
+              position: relative;
+          }
+
+          .top10-select-stack {
+              display: contents;
+          }
+
+          .top10-select-primary {
+              grid-column: 1;
+              grid-row: 1;
+              justify-self: start;
+          }
+
+          .top10-expand-primary {
+              grid-column: 2;
+              grid-row: 1;
+              justify-self: center;
+          }
+
+          .top10-copy-primary {
+              grid-column: 3;
+              grid-row: 1;
+              justify-self: center;
+          }
+
+          .top10-select-secondary {
+              position: absolute;
+              left: 0;
+              top: calc(100% + 6px);
+              display: flex;
+              gap: 8px;
+              justify-content: flex-start;
+              padding-left: 40px;
+              opacity: 0;
+              transform: translateY(-6px);
+              transition: opacity 0.25s ease, transform 0.25s ease;
+              pointer-events: none;
+          }
+
+          .top10-select-secondary.is-visible {
+              opacity: 1;
+              transform: translateY(0);
+              pointer-events: auto;
+          }
+
+          .top10-select-secondary .btn {
+              transition: transform 0.2s ease, box-shadow 0.2s ease;
+          }
+
+          .top10-select-secondary.is-visible .btn {
+              animation: pop-in 0.25s ease;
+          }
+
+          @keyframes pop-in {
+              0% { transform: scale(0.96); opacity: 0.6; }
+              100% { transform: scale(1); opacity: 1; }
+          }
       </style>
 
        <!-- Top 10 Expand Controls - NEW -->
-       <div id="top10-controls" style="display: none; margin-bottom: 20px; padding: 10px; border: 1px dashed #00ff41; text-align: center;">
-          <h3 style="margin: 0 0 10px 0;">🏆 Top 10 High Priority Leads</h3>
-          <div style="display: flex; justify-content: center; gap: 10px;">
-              <button class="btn btn-secondary" onclick="toggleSelectAll()">
-                  ✅ SELECT ALL
-              </button>
-              <button id="btn-expand-toggle" class="btn btn-primary" onclick="toggleTop10View()">
+       <div id="top10-controls" style="display: none; margin-bottom: 20px; padding: 6px 50px 48px; border: 1px dashed #00ff41; text-align: center;">
+          <div class="top10-actions">
+              <div class="top10-select-stack">
+                  <button class="btn btn-secondary top10-select-primary" onclick="toggleSelectAll()">
+                      ✅ SELECT ALL
+                  </button>
+                  <div id="top10-select-secondary" class="top10-select-secondary">
+                      <button id="btn-ignore-selected-top10" class="btn btn-danger" style="display: none;" data-default-label="❌ IGNORE SELECTED" onclick="bulkUpdateStatus('ignored')">
+                         ❌ IGNORE SELECTED
+                      </button>
+                      <button id="btn-copy-selected-full" class="btn btn-secondary" style="display: none;" data-default-label="📋 COPY SELECTED FULL POSTS" onclick="copySelectedFullPosts(this)">
+                         📋 COPY SELECTED FULL POSTS
+                      </button>
+                  </div>
+              </div>
+              <button id="btn-expand-toggle" class="btn btn-primary top10-expand-primary" onclick="toggleTop10View()">
                  ➕ EXPAND ALL 10 POSTS
               </button>
-              <button class="btn btn-secondary" onclick="copyAllVisible()">
-                 📋 COPY ALL VISIBLE
-              </button>
+              
           </div>
       </div>
 
@@ -206,9 +325,6 @@
           <div style="display: flex; justify-content: center; gap: 10px;">
               <button class="btn btn-secondary" onclick="toggleSelectAll()">
                   ✅ SELECT ALL
-              </button>
-              <button class="btn btn-secondary" onclick="copyAllVisible()">
-                 📋 COPY ALL VISIBLE
               </button>
                <button class="btn btn-danger" onclick="clearSelectedLeads()">
                  🗑️ CLEAR SELECTED
@@ -223,9 +339,6 @@
                 <button id="btn-send-all-notion" class="btn btn-primary" onclick="sendAllToNotion()" style="background: rgba(99, 102, 241, 0.3); border-color: #6366f1; color: #a5b4fc;">
                     📤 SEND ALL TO NOTION
                 </button>
-               <button class="btn btn-secondary" onclick="copyAllVisible()">
-                  📋 COPY ALL VISIBLE
-               </button>
            </div>
            <p style="margin: 10px 0 0 0; font-size: 12px; color: #888;">Only unsent leads will be added. Thread numbers assigned automatically.</p>
        </div>
@@ -237,6 +350,8 @@
             <button class="btn btn-danger" onclick="bulkUpdateStatus('ignored')">❌ Ignore</button>
       </div>
 
+      <div id="top10-marquee-menu" style="display: none;"></div>
+
       <!-- Action Bar -->
       <section class="action-bar">
         <button class="btn btn-primary" onclick="scanReddit()">
@@ -246,21 +361,7 @@
         <button class="btn btn-secondary" onclick="openSubredditSettings()">
           ⚙️ Manage Subreddits
         </button>
-        <button class="btn btn-secondary" onclick="filterLeads('all')">
-          📋 All Leads
-        </button>
-        <button class="btn btn-secondary" onclick="filterLeads('emergency')">
-          🚨 Emergency
-        </button>
-        <button class="btn btn-secondary" onclick="filterLeads('hot')">
-          🔥 Hot Only
-        </button>
-        <button class="btn btn-secondary" onclick="filterLeads('new')">
-          🆕 New Only
-        </button>
-        <button class="btn btn-secondary" onclick="exportLeads()">
-          💾 Export CSV
-        </button>
+        
         <button class="btn btn-secondary" onclick="toggleUtilityPanel()">
           🗒️ Notes & Tasks
         </button>
