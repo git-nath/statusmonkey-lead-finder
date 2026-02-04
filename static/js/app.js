@@ -14,13 +14,27 @@ let templates = {};
 // TASK 32: Bulk Actions
 let selectedLeads = new Set();
 let isTop10Expanded = false; // State for toggle
+let isTop10CompactMode = false;
+let isAllCompactMode = false;
 // TASK: Top 10 Batch State
 let top10BatchIds = new Set();
 let top10BatchIndices = new Map(); // Maps ID -> #Rank (1-10)
+let marqueeSelectionState = {
+  active: false,
+  startX: 0,
+  startY: 0,
+  currentX: 0,
+  currentY: 0,
+};
 
 const NOTES_STORAGE_KEY = "statusmonkeyNotes";
 const TASKS_STORAGE_KEY = "statusmonkeyTasks";
 const PANEL_OPEN_KEY = "statusmonkeyUtilityPanelOpen";
+const LAST_OPENED_LEAD_KEY = "statusmonkeyLastOpenedLead";
+const LAST_OPENED_LEAD_TIMESTAMP_KEY = "statusmonkeyLastOpenedLeadAt";
+const OPEN_POST_HIGHLIGHT_CLASS = "highlight";
+const DAILY_GOAL_KEY = "statusmonkeyDailyContactGoal";
+const DAILY_CONTACT_KEY = "statusmonkeyDailyContactCount";
 
 function getStoredItems(key, fallback) {
   const raw = localStorage.getItem(key);
@@ -57,6 +71,9 @@ document.addEventListener("DOMContentLoaded", function () {
   loadTasks();
   setupSidebarInputs();
   restoreUtilityPanel();
+  setupMarqueeSelection();
+  setupOpenPostHighlight();
+  setupDailyContactGoal();
 
   // Default to Today view
 });
@@ -247,7 +264,8 @@ async function loadStats() {
       stats.emergency || 0;
     document.getElementById("stat-hot").textContent = stats.hot;
     document.getElementById("stat-warm").textContent = stats.warm;
-    document.getElementById("stat-cold").textContent = stats.cold;
+    const coldEl = document.getElementById("stat-cold");
+    if (coldEl) coldEl.textContent = stats.cold;
     document.getElementById("stat-contacted").textContent = stats.contacted;
     document.getElementById("stat-converted").textContent = stats.converted;
     document.getElementById("stat-revenue").textContent =
@@ -313,6 +331,11 @@ function displayLeads(leads, options = {}) {
       const card = document.querySelector(`.lead-card[data-id="${id}"]`);
       if(card) card.classList.add('selected');
   });
+
+  if (currentFilter === "all") {
+      isAllCompactMode = true;
+      applyAllCompactView();
+  }
   
   updateBulkToolbar();
 }
@@ -330,10 +353,12 @@ function createLeadCard(lead, index) {
     ? `<span class="badge badge-converted">✓ CONVERTED</span>`
     : "";
 
+  const compactClass = currentFilter === "all" ? " compact-view" : "";
+
   return `
-   <div class="lead-card ${priorityClass}" data-id="${
+   <div class="lead-card ${priorityClass}${compactClass}" data-id="${
     lead.id
-  }" ondblclick="copyFullPost('${lead.id}')" style="cursor: pointer;">
+  }" onclick="handleLeadCardClick(event, '${lead.id}')" ondblclick="handleLeadCardDoubleClick(event, '${lead.id}')" style="cursor: pointer;">
 
 
 
@@ -361,7 +386,7 @@ function createLeadCard(lead, index) {
                 <div class="lead-actions-compact">
                     <button class="btn-small btn-link" onclick="event.stopPropagation(); openPost('${
                       lead.url
-                    }')">
+                    }', '${lead.id}')">
                         🔗 Open Post
                     </button>
                     <span class="compact-comments">💬 ${lead.comments} comments</span>
@@ -427,7 +452,7 @@ function createLeadCard(lead, index) {
             <div class="lead-actions">
                 <button class="btn-small btn-link" onclick="event.stopPropagation(); openPost('${
                   lead.url
-                }')">
+                }', '${lead.id}')">
                     🔗 Open Post
                 </button>
                 <button class="btn-small btn-copy-full" onclick="event.stopPropagation(); copyFullPost('${
@@ -479,6 +504,26 @@ function createLeadCard(lead, index) {
 
         </div>
     `;
+}
+
+function handleLeadCardDoubleClick(event, leadId) {
+  if (currentFilter === "top10" || currentFilter === "all") {
+    event.stopPropagation();
+    return;
+  }
+  copyFullPost(leadId);
+}
+
+function handleLeadCardClick(event, leadId) {
+  if (currentFilter !== "top10" && currentFilter !== "all") {
+    return;
+  }
+  if (event.target.closest("button, a, input, .lead-checkbox")) {
+    return;
+  }
+  const card = document.querySelector(`.lead-card[data-id="${leadId}"]`);
+  if (!card) return;
+  card.classList.toggle("compact-view");
 }
 
 // Show reply template modal
@@ -553,6 +598,8 @@ async function scanReddit() {
 
 async function updateStatus(leadId, status) {
   try {
+    const lead = allLeads.find((l) => l.id === leadId);
+    const previousStatus = lead ? lead.status || "new" : null;
     const response = await fetch(`/api/lead/${leadId}`, {
       method: "PUT",
       headers: {
@@ -563,9 +610,12 @@ async function updateStatus(leadId, status) {
 
     if (response.ok) {
       // ✅ UPDATE: Update lead in memory FIRST
-      const lead = allLeads.find((l) => l.id === leadId);
       if (lead) {
         lead.status = status;
+      }
+
+      if (status === "contacted" && previousStatus !== "contacted") {
+        incrementDailyContactCount();
       }
 
       // ✅ UPDATE: Refresh counts immediately
@@ -580,6 +630,81 @@ async function updateStatus(leadId, status) {
   } catch (error) {
     console.error("Error updating status:", error);
     showError("Failed to update lead");
+  }
+}
+
+function setupDailyContactGoal() {
+  const input = document.getElementById("daily-goal-input");
+  if (!input) return;
+
+  const storedGoal = Number(localStorage.getItem(DAILY_GOAL_KEY) || "0");
+  input.value = storedGoal > 0 ? storedGoal : "";
+
+  input.addEventListener("change", () => {
+    const value = Math.max(0, Number(input.value || 0));
+    localStorage.setItem(DAILY_GOAL_KEY, value.toString());
+    updateDailyGoalDisplay();
+  });
+
+  updateDailyGoalDisplay();
+}
+
+function getTodayKey() {
+  return new Date().toISOString().split("T")[0];
+}
+
+function getDailyContactState() {
+  const raw = localStorage.getItem(DAILY_CONTACT_KEY);
+  if (!raw) {
+    return { date: getTodayKey(), count: 0 };
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed.date !== getTodayKey()) {
+      return { date: getTodayKey(), count: 0 };
+    }
+    return parsed;
+  } catch (error) {
+    return { date: getTodayKey(), count: 0 };
+  }
+}
+
+function setDailyContactState(state) {
+  localStorage.setItem(DAILY_CONTACT_KEY, JSON.stringify(state));
+}
+
+function incrementDailyContactCount() {
+  const state = getDailyContactState();
+  const nextState = {
+    date: getTodayKey(),
+    count: state.count + 1,
+  };
+  setDailyContactState(nextState);
+  updateDailyGoalDisplay();
+}
+
+function updateDailyGoalDisplay() {
+  const goal = Number(localStorage.getItem(DAILY_GOAL_KEY) || "0");
+  const state = getDailyContactState();
+  const count = state.count;
+
+  const countEl = document.getElementById("daily-contact-count");
+  const goalEl = document.getElementById("daily-contact-goal");
+  const banner = document.getElementById("daily-goal-banner");
+  const bannerCount = document.getElementById("daily-goal-banner-count");
+  const bannerGoal = document.getElementById("daily-goal-banner-goal");
+
+  if (countEl) countEl.textContent = count.toString();
+  if (goalEl) goalEl.textContent = goal.toString();
+
+  if (banner && bannerCount) {
+    if (goal > 0 && count >= goal) {
+      banner.style.display = "block";
+      bannerCount.textContent = count.toString();
+      if (bannerGoal) bannerGoal.textContent = goal.toString();
+    } else {
+      banner.style.display = "none";
+    }
   }
 }
 
@@ -617,6 +742,13 @@ function filterLeads(filter) {
 
   const todayBtn = document.getElementById("today-btn");
   currentFilter = filter;
+  if (filter !== "top10") {
+    isTop10CompactMode = false;
+    updateTop10MarqueeMenu();
+  }
+  if (filter !== "all") {
+    isAllCompactMode = false;
+  }
 
   let filtered = allLeads;
 
@@ -641,6 +773,12 @@ function filterLeads(filter) {
   }
 
   // normal filters
+  if (filter === "all") {
+    displayLeads(filtered);
+    isAllCompactMode = true;
+    applyAllCompactView();
+    return;
+  }
   if (filter === "emergency") {
     filtered = allLeads.filter((lead) => lead.priority === "emergency");
   } else if (filter === "hot") {
@@ -728,12 +866,18 @@ function filterLeads(filter) {
       // Show the Expand All button
       checkHideControls('top10');
       
-      // Reset expansion state when entering tab
+      // Default to compact view when entering Top 10
       isTop10Expanded = false;
+      isTop10CompactMode = true;
       const btn = document.getElementById("btn-expand-toggle");
-      if(btn) btn.innerHTML = "➕ EXPAND ALL 10 POSTS";
+      if (btn) {
+        btn.innerHTML = "➕ EXPAND ALL 10 POSTS";
+        btn.disabled = false;
+      }
 
       displayLeads(filtered, { bypassStatus: true, isTop10: true });
+      contractAllTop10();
+      updateTop10MarqueeMenu();
       return;
   }
   
@@ -844,8 +988,56 @@ function exportLeads() {
 }
 
 // Open Reddit post in new tab
-function openPost(url) {
+function openPost(url, leadId) {
+  if (leadId) {
+    localStorage.setItem(LAST_OPENED_LEAD_KEY, leadId);
+    localStorage.setItem(LAST_OPENED_LEAD_TIMESTAMP_KEY, Date.now().toString());
+  }
   window.open(url, "_blank");
+}
+
+function setupOpenPostHighlight() {
+  const attemptHighlight = () => highlightLastOpenedLead(6);
+  window.addEventListener("focus", attemptHighlight);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      attemptHighlight();
+    }
+  });
+  window.addEventListener("pageshow", attemptHighlight);
+  document.addEventListener("click", clearOpenPostHighlight);
+}
+
+function highlightLastOpenedLead(retries) {
+  const leadId = localStorage.getItem(LAST_OPENED_LEAD_KEY);
+  if (!leadId) return;
+  const lastOpenedAt = Number(
+    localStorage.getItem(LAST_OPENED_LEAD_TIMESTAMP_KEY) || "0"
+  );
+  if (Date.now() - lastOpenedAt > 5 * 60 * 1000) {
+    return;
+  }
+
+  const leadCard = document.querySelector(`.lead-card[data-id="${leadId}"]`);
+  if (!leadCard) {
+    if (retries > 0) {
+      setTimeout(() => highlightLastOpenedLead(retries - 1), 300);
+    }
+    return;
+  }
+
+  clearOpenPostHighlight();
+  leadCard.classList.add(OPEN_POST_HIGHLIGHT_CLASS);
+  leadCard.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function clearOpenPostHighlight() {
+  const highlighted = document.querySelector(
+    `.lead-card.${OPEN_POST_HIGHLIGHT_CLASS}`
+  );
+  if (highlighted) {
+    highlighted.classList.remove(OPEN_POST_HIGHLIGHT_CLASS);
+  }
 }
 
 // Show notification
@@ -1394,7 +1586,20 @@ async function copyFullPost(leadId) {
 }
 
 function showFullPostModal(postData) {
-  // Format the content
+  const content = buildFullPostContent(postData);
+
+  /// Show modal and store lead ID + post URL
+  document.getElementById("full-post-content").value = content;
+  document
+    .getElementById("full-post-modal")
+    .setAttribute("data-lead-id", postData.leadId);
+  document
+    .getElementById("full-post-modal")
+    .setAttribute("data-post-url", postData.url);
+  document.getElementById("full-post-modal").style.display = "flex";
+}
+
+function buildFullPostContent(postData) {
   let content = `TITLE: ${postData.title}\n\n`;
   content += `AUTHOR: u/${postData.author}\n`;
   content += `SCORE: ${postData.score} upvotes | ${postData.num_comments} comments\n`;
@@ -1416,15 +1621,7 @@ function showFullPostModal(postData) {
     content += "No comments yet.\n";
   }
 
-  /// Show modal and store lead ID + post URL
-  document.getElementById("full-post-content").value = content;
-  document
-    .getElementById("full-post-modal")
-    .setAttribute("data-lead-id", postData.leadId);
-  document
-    .getElementById("full-post-modal")
-    .setAttribute("data-post-url", postData.url);
-  document.getElementById("full-post-modal").style.display = "flex";
+  return content;
 }
 
 function closeFullPostModal() {
@@ -1495,20 +1692,57 @@ async function toggleTop10View() {
     if (isTop10Expanded) {
         // CONTRACT
         contractAllTop10();
-        btn.innerHTML = "➕ EXPAND ALL 10 POSTS";
+        if (btn) {
+            btn.innerHTML = "➕ EXPAND ALL 10 POSTS";
+            btn.disabled = false;
+        }
         isTop10Expanded = false;
     } else {
         // EXPAND
-        await expandAllTop10();
-        btn.innerHTML = "➖ CONTRACT (COMPACT VIEW)";
-        isTop10Expanded = true;
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = "⏳ EXPANDING...";
+        }
+        try {
+            await expandAllTop10();
+            if (btn) {
+                btn.innerHTML = "➖ CONTRACT (COMPACT VIEW)";
+            }
+            isTop10Expanded = true;
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+            }
+        }
     }
+    updateTop10MarqueeMenu();
 }
 
 function contractAllTop10() {
     const cards = document.querySelectorAll("#leads-container .lead-card");
     cards.forEach(card => {
         card.classList.add("compact-view");
+    });
+    isTop10CompactMode = true;
+    updateTop10MarqueeMenu();
+}
+
+function contractAllLeads() {
+    const cards = document.querySelectorAll("#leads-container .lead-card");
+    cards.forEach(card => {
+        card.classList.add("compact-view");
+    });
+}
+
+function applyAllCompactView() {
+    if (currentFilter !== "all") return;
+    requestAnimationFrame(() => {
+        contractAllLeads();
+        setTimeout(() => {
+            if (currentFilter === "all") {
+                contractAllLeads();
+            }
+        }, 0);
     });
 }
 
@@ -1524,6 +1758,8 @@ async function expandAllTop10() {
     cards.forEach(card => {
         card.classList.remove("compact-view");
     });
+    isTop10CompactMode = false;
+    updateTop10MarqueeMenu();
 
     // 2. Iterate and fetch full content for each
     const promises = Array.from(cards).map(async (card) => {
@@ -1631,6 +1867,7 @@ function toggleSelect(leadId) {
     }
     
     updateBulkToolbar();
+    updateTop10MarqueeMenu();
 }
 
 function toggleSelectAll() {
@@ -1652,10 +1889,58 @@ function updateBulkToolbar() {
     const countSpan = document.getElementById('selected-count');
     
     if(selectedLeads.size > 0) {
-        toolbar.style.display = 'flex';
+        if (currentFilter === "top10") {
+            toolbar.style.display = 'none';
+        } else {
+            toolbar.style.display = 'flex';
+        }
         countSpan.textContent = selectedLeads.size;
     } else {
         toolbar.style.display = 'none';
+    }
+
+    updateTop10MarqueeMenu();
+}
+
+function updateTop10MarqueeMenu() {
+    updateTop10CopySelectedButton();
+}
+
+function clearMarqueeSelection() {
+    const selectedIds = Array.from(selectedLeads);
+    selectedIds.forEach((leadId) => {
+        const card = document.querySelector(`.lead-card[data-id="${leadId}"]`);
+        const checkbox = document.querySelector(`.lead-checkbox[data-id="${leadId}"]`);
+        if (card) card.classList.remove("selected");
+        if (checkbox) checkbox.checked = false;
+    });
+    selectedLeads.clear();
+    updateBulkToolbar();
+}
+
+function updateTop10CopySelectedButton() {
+    const button = document.getElementById("btn-copy-selected-full");
+    const ignoreButton = document.getElementById("btn-ignore-selected-top10");
+    const secondaryRow = document.getElementById("top10-select-secondary");
+    if (!button) return;
+    if (selectedLeads.size > 0) {
+        button.style.display = "inline-flex";
+        button.textContent = `📋 COPY SELECTED FULL POSTS (${selectedLeads.size})`;
+        if (ignoreButton) {
+            ignoreButton.style.display = "inline-flex";
+            ignoreButton.textContent = `❌ IGNORE SELECTED (${selectedLeads.size})`;
+        }
+        if (secondaryRow) {
+            secondaryRow.classList.add("is-visible");
+        }
+    } else {
+        button.style.display = "none";
+        if (ignoreButton) {
+            ignoreButton.style.display = "none";
+        }
+        if (secondaryRow) {
+            secondaryRow.classList.remove("is-visible");
+        }
     }
 }
 
@@ -1751,6 +2036,175 @@ async function clearSelectedLeads() {
     displayLeads(allLeads); // Re-render
     
     showNotification(`✅ Cleared ${count} leads!`);
+}
+
+async function copySelectedFullPosts(button) {
+    if (selectedLeads.size === 0) {
+        showError("No leads selected to copy");
+        return;
+    }
+
+    const targetButton = button || null;
+    let originalLabel = "";
+    if (targetButton) {
+        originalLabel =
+            targetButton.getAttribute("data-default-label") ||
+            targetButton.textContent;
+        targetButton.textContent = "⏳ COPYING FULL POSTS...";
+        targetButton.disabled = true;
+    }
+
+    const cards = Array.from(document.querySelectorAll("#leads-container .lead-card"))
+        .filter(card => selectedLeads.has(card.getAttribute("data-id")));
+    const leadIds = cards.length > 0
+        ? cards.map(card => card.getAttribute("data-id"))
+        : Array.from(selectedLeads);
+
+    let fullText = "STATUSMONKEY SELECTED LEADS EXPORT\n=================================\n\n";
+
+    const results = await Promise.all(
+        leadIds.map(async (id) => {
+            try {
+                const response = await fetch(`/api/reddit/full/${id}`);
+                const data = await response.json();
+                if (data.success) {
+                    return { id, data };
+                }
+                return { id, error: data.error || "Failed to fetch" };
+            } catch (error) {
+                console.error(error);
+                return { id, error: "Failed to fetch" };
+            }
+        })
+    );
+
+    results.forEach((result, index) => {
+        fullText += `LEAD #${index + 1}\n`;
+        if (result.data) {
+            fullText += `${buildFullPostContent(result.data)}\n`;
+        } else {
+            fullText += `ERROR: ${result.error}\n\n`;
+        }
+        fullText += "---------------------------------\n\n";
+    });
+
+    try {
+        await navigator.clipboard.writeText(fullText);
+        showNotification(`✅ Copied ${results.length} full posts to clipboard!`);
+    } catch (error) {
+        console.error(error);
+        showError("Failed to copy to clipboard");
+    } finally {
+        if (targetButton) {
+            targetButton.disabled = false;
+            targetButton.textContent = originalLabel;
+        }
+    }
+}
+
+function setupMarqueeSelection() {
+    const container = document.getElementById("leads-container");
+    if (!container) return;
+
+    container.addEventListener("mousedown", (event) => {
+        if (!isTop10CompactMode) return;
+        if (event.button !== 0) return;
+        if (event.detail !== 2) return;
+        if (event.target.closest("button, a, input, .lead-checkbox")) return;
+
+        marqueeSelectionState.active = true;
+        marqueeSelectionState.startX = event.pageX;
+        marqueeSelectionState.startY = event.pageY;
+        marqueeSelectionState.currentX = event.pageX;
+        marqueeSelectionState.currentY = event.pageY;
+
+        let box = document.getElementById("marquee-selection-box");
+        if (!box) {
+            box = document.createElement("div");
+            box.id = "marquee-selection-box";
+            document.body.appendChild(box);
+        }
+
+        box.style.display = "block";
+        document.body.classList.add("marquee-active");
+        updateMarqueeBox();
+    });
+
+    document.addEventListener("mousemove", (event) => {
+        if (!marqueeSelectionState.active) return;
+        marqueeSelectionState.currentX = event.pageX;
+        marqueeSelectionState.currentY = event.pageY;
+        updateMarqueeBox();
+    });
+
+    document.addEventListener("mouseup", () => {
+        if (!marqueeSelectionState.active) return;
+        marqueeSelectionState.active = false;
+        document.body.classList.remove("marquee-active");
+
+        const box = document.getElementById("marquee-selection-box");
+        if (box) {
+            box.style.display = "none";
+        }
+
+        selectLeadsInMarquee();
+    });
+}
+
+function updateMarqueeBox() {
+    const box = document.getElementById("marquee-selection-box");
+    if (!box) return;
+
+    const left = Math.min(marqueeSelectionState.startX, marqueeSelectionState.currentX);
+    const top = Math.min(marqueeSelectionState.startY, marqueeSelectionState.currentY);
+    const right = Math.max(marqueeSelectionState.startX, marqueeSelectionState.currentX);
+    const bottom = Math.max(marqueeSelectionState.startY, marqueeSelectionState.currentY);
+
+    box.style.left = `${left}px`;
+    box.style.top = `${top}px`;
+    box.style.width = `${right - left}px`;
+    box.style.height = `${bottom - top}px`;
+}
+
+function selectLeadsInMarquee() {
+    if (!isTop10CompactMode) return;
+
+    const left = Math.min(marqueeSelectionState.startX, marqueeSelectionState.currentX);
+    const top = Math.min(marqueeSelectionState.startY, marqueeSelectionState.currentY);
+    const right = Math.max(marqueeSelectionState.startX, marqueeSelectionState.currentX);
+    const bottom = Math.max(marqueeSelectionState.startY, marqueeSelectionState.currentY);
+
+    const selectionRect = {
+        left,
+        top,
+        right,
+        bottom,
+    };
+
+    const cards = document.querySelectorAll("#leads-container .lead-card");
+    cards.forEach((card) => {
+        const rect = card.getBoundingClientRect();
+        const cardRect = {
+            left: rect.left + window.scrollX,
+            top: rect.top + window.scrollY,
+            right: rect.right + window.scrollX,
+            bottom: rect.bottom + window.scrollY,
+        };
+
+        const intersects = !(
+            selectionRect.right < cardRect.left ||
+            selectionRect.left > cardRect.right ||
+            selectionRect.bottom < cardRect.top ||
+            selectionRect.top > cardRect.bottom
+        );
+
+        if (intersects) {
+            const leadId = card.getAttribute("data-id");
+            if (!selectedLeads.has(leadId)) {
+                toggleSelect(leadId);
+            }
+        }
+    });
 }
 
 // ============================================
