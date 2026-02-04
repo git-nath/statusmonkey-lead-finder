@@ -14,13 +14,24 @@ let templates = {};
 // TASK 32: Bulk Actions
 let selectedLeads = new Set();
 let isTop10Expanded = false; // State for toggle
+let isTop10CompactMode = false;
 // TASK: Top 10 Batch State
 let top10BatchIds = new Set();
 let top10BatchIndices = new Map(); // Maps ID -> #Rank (1-10)
+let marqueeSelectionState = {
+  active: false,
+  startX: 0,
+  startY: 0,
+  currentX: 0,
+  currentY: 0,
+};
 
 const NOTES_STORAGE_KEY = "statusmonkeyNotes";
 const TASKS_STORAGE_KEY = "statusmonkeyTasks";
 const PANEL_OPEN_KEY = "statusmonkeyUtilityPanelOpen";
+const LAST_OPENED_LEAD_KEY = "statusmonkeyLastOpenedLead";
+const LAST_OPENED_LEAD_TIMESTAMP_KEY = "statusmonkeyLastOpenedLeadAt";
+const OPEN_POST_HIGHLIGHT_CLASS = "highlight";
 
 function getStoredItems(key, fallback) {
   const raw = localStorage.getItem(key);
@@ -57,6 +68,8 @@ document.addEventListener("DOMContentLoaded", function () {
   loadTasks();
   setupSidebarInputs();
   restoreUtilityPanel();
+  setupMarqueeSelection();
+  setupOpenPostHighlight();
 
   // Default to Today view
 });
@@ -333,7 +346,7 @@ function createLeadCard(lead, index) {
   return `
    <div class="lead-card ${priorityClass}" data-id="${
     lead.id
-  }" ondblclick="copyFullPost('${lead.id}')" style="cursor: pointer;">
+  }" onclick="handleLeadCardClick(event, '${lead.id}')" ondblclick="handleLeadCardDoubleClick(event, '${lead.id}')" style="cursor: pointer;">
 
 
 
@@ -361,7 +374,7 @@ function createLeadCard(lead, index) {
                 <div class="lead-actions-compact">
                     <button class="btn-small btn-link" onclick="event.stopPropagation(); openPost('${
                       lead.url
-                    }')">
+                    }', '${lead.id}')">
                         🔗 Open Post
                     </button>
                     <span class="compact-comments">💬 ${lead.comments} comments</span>
@@ -427,7 +440,7 @@ function createLeadCard(lead, index) {
             <div class="lead-actions">
                 <button class="btn-small btn-link" onclick="event.stopPropagation(); openPost('${
                   lead.url
-                }')">
+                }', '${lead.id}')">
                     🔗 Open Post
                 </button>
                 <button class="btn-small btn-copy-full" onclick="event.stopPropagation(); copyFullPost('${
@@ -479,6 +492,26 @@ function createLeadCard(lead, index) {
 
         </div>
     `;
+}
+
+function handleLeadCardDoubleClick(event, leadId) {
+  if (currentFilter === "top10") {
+    event.stopPropagation();
+    return;
+  }
+  copyFullPost(leadId);
+}
+
+function handleLeadCardClick(event, leadId) {
+  if (currentFilter !== "top10") {
+    return;
+  }
+  if (event.target.closest("button, a, input, .lead-checkbox")) {
+    return;
+  }
+  const card = document.querySelector(`.lead-card[data-id="${leadId}"]`);
+  if (!card) return;
+  card.classList.toggle("compact-view");
 }
 
 // Show reply template modal
@@ -617,6 +650,10 @@ function filterLeads(filter) {
 
   const todayBtn = document.getElementById("today-btn");
   currentFilter = filter;
+  if (filter !== "top10") {
+    isTop10CompactMode = false;
+    updateTop10MarqueeMenu();
+  }
 
   let filtered = allLeads;
 
@@ -728,12 +765,18 @@ function filterLeads(filter) {
       // Show the Expand All button
       checkHideControls('top10');
       
-      // Reset expansion state when entering tab
+      // Default to compact view when entering Top 10
       isTop10Expanded = false;
+      isTop10CompactMode = true;
       const btn = document.getElementById("btn-expand-toggle");
-      if(btn) btn.innerHTML = "➕ EXPAND ALL 10 POSTS";
+      if (btn) {
+        btn.innerHTML = "➕ EXPAND ALL 10 POSTS";
+        btn.disabled = false;
+      }
 
       displayLeads(filtered, { bypassStatus: true, isTop10: true });
+      contractAllTop10();
+      updateTop10MarqueeMenu();
       return;
   }
   
@@ -844,8 +887,56 @@ function exportLeads() {
 }
 
 // Open Reddit post in new tab
-function openPost(url) {
+function openPost(url, leadId) {
+  if (leadId) {
+    localStorage.setItem(LAST_OPENED_LEAD_KEY, leadId);
+    localStorage.setItem(LAST_OPENED_LEAD_TIMESTAMP_KEY, Date.now().toString());
+  }
   window.open(url, "_blank");
+}
+
+function setupOpenPostHighlight() {
+  const attemptHighlight = () => highlightLastOpenedLead(6);
+  window.addEventListener("focus", attemptHighlight);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      attemptHighlight();
+    }
+  });
+  window.addEventListener("pageshow", attemptHighlight);
+  document.addEventListener("click", clearOpenPostHighlight);
+}
+
+function highlightLastOpenedLead(retries) {
+  const leadId = localStorage.getItem(LAST_OPENED_LEAD_KEY);
+  if (!leadId) return;
+  const lastOpenedAt = Number(
+    localStorage.getItem(LAST_OPENED_LEAD_TIMESTAMP_KEY) || "0"
+  );
+  if (Date.now() - lastOpenedAt > 5 * 60 * 1000) {
+    return;
+  }
+
+  const leadCard = document.querySelector(`.lead-card[data-id="${leadId}"]`);
+  if (!leadCard) {
+    if (retries > 0) {
+      setTimeout(() => highlightLastOpenedLead(retries - 1), 300);
+    }
+    return;
+  }
+
+  clearOpenPostHighlight();
+  leadCard.classList.add(OPEN_POST_HIGHLIGHT_CLASS);
+  leadCard.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function clearOpenPostHighlight() {
+  const highlighted = document.querySelector(
+    `.lead-card.${OPEN_POST_HIGHLIGHT_CLASS}`
+  );
+  if (highlighted) {
+    highlighted.classList.remove(OPEN_POST_HIGHLIGHT_CLASS);
+  }
 }
 
 // Show notification
@@ -1394,7 +1485,20 @@ async function copyFullPost(leadId) {
 }
 
 function showFullPostModal(postData) {
-  // Format the content
+  const content = buildFullPostContent(postData);
+
+  /// Show modal and store lead ID + post URL
+  document.getElementById("full-post-content").value = content;
+  document
+    .getElementById("full-post-modal")
+    .setAttribute("data-lead-id", postData.leadId);
+  document
+    .getElementById("full-post-modal")
+    .setAttribute("data-post-url", postData.url);
+  document.getElementById("full-post-modal").style.display = "flex";
+}
+
+function buildFullPostContent(postData) {
   let content = `TITLE: ${postData.title}\n\n`;
   content += `AUTHOR: u/${postData.author}\n`;
   content += `SCORE: ${postData.score} upvotes | ${postData.num_comments} comments\n`;
@@ -1416,15 +1520,7 @@ function showFullPostModal(postData) {
     content += "No comments yet.\n";
   }
 
-  /// Show modal and store lead ID + post URL
-  document.getElementById("full-post-content").value = content;
-  document
-    .getElementById("full-post-modal")
-    .setAttribute("data-lead-id", postData.leadId);
-  document
-    .getElementById("full-post-modal")
-    .setAttribute("data-post-url", postData.url);
-  document.getElementById("full-post-modal").style.display = "flex";
+  return content;
 }
 
 function closeFullPostModal() {
@@ -1495,14 +1591,30 @@ async function toggleTop10View() {
     if (isTop10Expanded) {
         // CONTRACT
         contractAllTop10();
-        btn.innerHTML = "➕ EXPAND ALL 10 POSTS";
+        if (btn) {
+            btn.innerHTML = "➕ EXPAND ALL 10 POSTS";
+            btn.disabled = false;
+        }
         isTop10Expanded = false;
     } else {
         // EXPAND
-        await expandAllTop10();
-        btn.innerHTML = "➖ CONTRACT (COMPACT VIEW)";
-        isTop10Expanded = true;
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = "⏳ EXPANDING...";
+        }
+        try {
+            await expandAllTop10();
+            if (btn) {
+                btn.innerHTML = "➖ CONTRACT (COMPACT VIEW)";
+            }
+            isTop10Expanded = true;
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+            }
+        }
     }
+    updateTop10MarqueeMenu();
 }
 
 function contractAllTop10() {
@@ -1510,6 +1622,8 @@ function contractAllTop10() {
     cards.forEach(card => {
         card.classList.add("compact-view");
     });
+    isTop10CompactMode = true;
+    updateTop10MarqueeMenu();
 }
 
 async function expandAllTop10() {
@@ -1524,6 +1638,8 @@ async function expandAllTop10() {
     cards.forEach(card => {
         card.classList.remove("compact-view");
     });
+    isTop10CompactMode = false;
+    updateTop10MarqueeMenu();
 
     // 2. Iterate and fetch full content for each
     const promises = Array.from(cards).map(async (card) => {
@@ -1631,6 +1747,7 @@ function toggleSelect(leadId) {
     }
     
     updateBulkToolbar();
+    updateTop10MarqueeMenu();
 }
 
 function toggleSelectAll() {
@@ -1656,6 +1773,46 @@ function updateBulkToolbar() {
         countSpan.textContent = selectedLeads.size;
     } else {
         toolbar.style.display = 'none';
+    }
+
+    updateTop10MarqueeMenu();
+}
+
+function updateTop10MarqueeMenu() {
+    const menu = document.getElementById("top10-marquee-menu");
+    const countSpan = document.getElementById("top10-selected-count");
+    if (!menu || !countSpan) return;
+
+    if (isTop10CompactMode && selectedLeads.size > 0) {
+        menu.style.display = "flex";
+        countSpan.textContent = selectedLeads.size;
+    } else {
+        menu.style.display = "none";
+    }
+
+    updateTop10CopySelectedButton();
+}
+
+function clearMarqueeSelection() {
+    const selectedIds = Array.from(selectedLeads);
+    selectedIds.forEach((leadId) => {
+        const card = document.querySelector(`.lead-card[data-id="${leadId}"]`);
+        const checkbox = document.querySelector(`.lead-checkbox[data-id="${leadId}"]`);
+        if (card) card.classList.remove("selected");
+        if (checkbox) checkbox.checked = false;
+    });
+    selectedLeads.clear();
+    updateBulkToolbar();
+}
+
+function updateTop10CopySelectedButton() {
+    const button = document.getElementById("btn-copy-selected-full");
+    if (!button) return;
+    if (selectedLeads.size > 0) {
+        button.style.display = "inline-flex";
+        button.textContent = `📋 COPY SELECTED FULL POSTS (${selectedLeads.size})`;
+    } else {
+        button.style.display = "none";
     }
 }
 
@@ -1751,6 +1908,175 @@ async function clearSelectedLeads() {
     displayLeads(allLeads); // Re-render
     
     showNotification(`✅ Cleared ${count} leads!`);
+}
+
+async function copySelectedFullPosts(button) {
+    if (selectedLeads.size === 0) {
+        showError("No leads selected to copy");
+        return;
+    }
+
+    const targetButton = button || null;
+    let originalLabel = "";
+    if (targetButton) {
+        originalLabel =
+            targetButton.getAttribute("data-default-label") ||
+            targetButton.textContent;
+        targetButton.textContent = "⏳ COPYING FULL POSTS...";
+        targetButton.disabled = true;
+    }
+
+    const cards = Array.from(document.querySelectorAll("#leads-container .lead-card"))
+        .filter(card => selectedLeads.has(card.getAttribute("data-id")));
+    const leadIds = cards.length > 0
+        ? cards.map(card => card.getAttribute("data-id"))
+        : Array.from(selectedLeads);
+
+    let fullText = "STATUSMONKEY SELECTED LEADS EXPORT\n=================================\n\n";
+
+    const results = await Promise.all(
+        leadIds.map(async (id) => {
+            try {
+                const response = await fetch(`/api/reddit/full/${id}`);
+                const data = await response.json();
+                if (data.success) {
+                    return { id, data };
+                }
+                return { id, error: data.error || "Failed to fetch" };
+            } catch (error) {
+                console.error(error);
+                return { id, error: "Failed to fetch" };
+            }
+        })
+    );
+
+    results.forEach((result, index) => {
+        fullText += `LEAD #${index + 1}\n`;
+        if (result.data) {
+            fullText += `${buildFullPostContent(result.data)}\n`;
+        } else {
+            fullText += `ERROR: ${result.error}\n\n`;
+        }
+        fullText += "---------------------------------\n\n";
+    });
+
+    try {
+        await navigator.clipboard.writeText(fullText);
+        showNotification(`✅ Copied ${results.length} full posts to clipboard!`);
+    } catch (error) {
+        console.error(error);
+        showError("Failed to copy to clipboard");
+    } finally {
+        if (targetButton) {
+            targetButton.disabled = false;
+            targetButton.textContent = originalLabel;
+        }
+    }
+}
+
+function setupMarqueeSelection() {
+    const container = document.getElementById("leads-container");
+    if (!container) return;
+
+    container.addEventListener("mousedown", (event) => {
+        if (!isTop10CompactMode) return;
+        if (event.button !== 0) return;
+        if (event.detail !== 2) return;
+        if (event.target.closest("button, a, input, .lead-checkbox")) return;
+
+        marqueeSelectionState.active = true;
+        marqueeSelectionState.startX = event.pageX;
+        marqueeSelectionState.startY = event.pageY;
+        marqueeSelectionState.currentX = event.pageX;
+        marqueeSelectionState.currentY = event.pageY;
+
+        let box = document.getElementById("marquee-selection-box");
+        if (!box) {
+            box = document.createElement("div");
+            box.id = "marquee-selection-box";
+            document.body.appendChild(box);
+        }
+
+        box.style.display = "block";
+        document.body.classList.add("marquee-active");
+        updateMarqueeBox();
+    });
+
+    document.addEventListener("mousemove", (event) => {
+        if (!marqueeSelectionState.active) return;
+        marqueeSelectionState.currentX = event.pageX;
+        marqueeSelectionState.currentY = event.pageY;
+        updateMarqueeBox();
+    });
+
+    document.addEventListener("mouseup", () => {
+        if (!marqueeSelectionState.active) return;
+        marqueeSelectionState.active = false;
+        document.body.classList.remove("marquee-active");
+
+        const box = document.getElementById("marquee-selection-box");
+        if (box) {
+            box.style.display = "none";
+        }
+
+        selectLeadsInMarquee();
+    });
+}
+
+function updateMarqueeBox() {
+    const box = document.getElementById("marquee-selection-box");
+    if (!box) return;
+
+    const left = Math.min(marqueeSelectionState.startX, marqueeSelectionState.currentX);
+    const top = Math.min(marqueeSelectionState.startY, marqueeSelectionState.currentY);
+    const right = Math.max(marqueeSelectionState.startX, marqueeSelectionState.currentX);
+    const bottom = Math.max(marqueeSelectionState.startY, marqueeSelectionState.currentY);
+
+    box.style.left = `${left}px`;
+    box.style.top = `${top}px`;
+    box.style.width = `${right - left}px`;
+    box.style.height = `${bottom - top}px`;
+}
+
+function selectLeadsInMarquee() {
+    if (!isTop10CompactMode) return;
+
+    const left = Math.min(marqueeSelectionState.startX, marqueeSelectionState.currentX);
+    const top = Math.min(marqueeSelectionState.startY, marqueeSelectionState.currentY);
+    const right = Math.max(marqueeSelectionState.startX, marqueeSelectionState.currentX);
+    const bottom = Math.max(marqueeSelectionState.startY, marqueeSelectionState.currentY);
+
+    const selectionRect = {
+        left,
+        top,
+        right,
+        bottom,
+    };
+
+    const cards = document.querySelectorAll("#leads-container .lead-card");
+    cards.forEach((card) => {
+        const rect = card.getBoundingClientRect();
+        const cardRect = {
+            left: rect.left + window.scrollX,
+            top: rect.top + window.scrollY,
+            right: rect.right + window.scrollX,
+            bottom: rect.bottom + window.scrollY,
+        };
+
+        const intersects = !(
+            selectionRect.right < cardRect.left ||
+            selectionRect.left > cardRect.right ||
+            selectionRect.bottom < cardRect.top ||
+            selectionRect.top > cardRect.bottom
+        );
+
+        if (intersects) {
+            const leadId = card.getAttribute("data-id");
+            if (!selectedLeads.has(leadId)) {
+                toggleSelect(leadId);
+            }
+        }
+    });
 }
 
 // ============================================
