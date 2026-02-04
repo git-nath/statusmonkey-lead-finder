@@ -1805,7 +1805,11 @@ function updateBulkToolbar() {
     const countSpan = document.getElementById('selected-count');
     
     if(selectedLeads.size > 0) {
-        toolbar.style.display = 'flex';
+        if (currentFilter === "top10") {
+            toolbar.style.display = 'none';
+        } else {
+            toolbar.style.display = 'flex';
+        }
         countSpan.textContent = selectedLeads.size;
     } else {
         toolbar.style.display = 'none';
@@ -1815,17 +1819,6 @@ function updateBulkToolbar() {
 }
 
 function updateTop10MarqueeMenu() {
-    const menu = document.getElementById("top10-marquee-menu");
-    const countSpan = document.getElementById("top10-selected-count");
-    if (!menu || !countSpan) return;
-
-    if (isTop10CompactMode && selectedLeads.size > 0) {
-        menu.style.display = "flex";
-        countSpan.textContent = selectedLeads.size;
-    } else {
-        menu.style.display = "none";
-    }
-
     updateTop10CopySelectedButton();
 }
 
