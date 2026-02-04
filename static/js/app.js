@@ -15,6 +15,7 @@ let templates = {};
 let selectedLeads = new Set();
 let isTop10Expanded = false; // State for toggle
 let isTop10CompactMode = false;
+let isAllCompactMode = false;
 // TASK: Top 10 Batch State
 let top10BatchIds = new Set();
 let top10BatchIndices = new Map(); // Maps ID -> #Rank (1-10)
@@ -495,7 +496,7 @@ function createLeadCard(lead, index) {
 }
 
 function handleLeadCardDoubleClick(event, leadId) {
-  if (currentFilter === "top10") {
+  if (currentFilter === "top10" || currentFilter === "all") {
     event.stopPropagation();
     return;
   }
@@ -503,7 +504,7 @@ function handleLeadCardDoubleClick(event, leadId) {
 }
 
 function handleLeadCardClick(event, leadId) {
-  if (currentFilter !== "top10") {
+  if (currentFilter !== "top10" && currentFilter !== "all") {
     return;
   }
   if (event.target.closest("button, a, input, .lead-checkbox")) {
@@ -654,6 +655,9 @@ function filterLeads(filter) {
     isTop10CompactMode = false;
     updateTop10MarqueeMenu();
   }
+  if (filter !== "all") {
+    isAllCompactMode = false;
+  }
 
   let filtered = allLeads;
 
@@ -678,6 +682,12 @@ function filterLeads(filter) {
   }
 
   // normal filters
+  if (filter === "all") {
+    displayLeads(filtered);
+    isAllCompactMode = true;
+    contractAllLeads();
+    return;
+  }
   if (filter === "emergency") {
     filtered = allLeads.filter((lead) => lead.priority === "emergency");
   } else if (filter === "hot") {
@@ -1624,6 +1634,13 @@ function contractAllTop10() {
     });
     isTop10CompactMode = true;
     updateTop10MarqueeMenu();
+}
+
+function contractAllLeads() {
+    const cards = document.querySelectorAll("#leads-container .lead-card");
+    cards.forEach(card => {
+        card.classList.add("compact-view");
+    });
 }
 
 async function expandAllTop10() {
