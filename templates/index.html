@@ -221,16 +221,20 @@
        <!-- Top 10 Expand Controls - NEW -->
        <div id="top10-controls" style="display: none; margin-bottom: 20px; padding: 10px; border: 1px dashed #00ff41; text-align: center;">
           <h3 style="margin: 0 0 10px 0;">🏆 Top 10 High Priority Leads</h3>
-          <div style="display: flex; justify-content: center; gap: 10px;">
-              <button class="btn btn-secondary" onclick="toggleSelectAll()">
-                  ✅ SELECT ALL
-              </button>
-              <button id="btn-ignore-selected-top10" class="btn btn-danger" style="display: none;" data-default-label="❌ IGNORE SELECTED" onclick="bulkUpdateStatus('ignored')">
-                 ❌ IGNORE SELECTED
-              </button>
-              <button id="btn-copy-selected-full" class="btn btn-secondary" style="display: none;" data-default-label="📋 COPY SELECTED FULL POSTS" onclick="copySelectedFullPosts(this)">
-                 📋 COPY SELECTED FULL POSTS
-              </button>
+          <div style="display: flex; justify-content: center; gap: 10px; align-items: flex-start;">
+              <div style="display: flex; flex-direction: column; gap: 8px; align-items: center;">
+                  <button class="btn btn-secondary" onclick="toggleSelectAll()">
+                      ✅ SELECT ALL
+                  </button>
+                  <div style="display: flex; gap: 8px; justify-content: center;">
+                      <button id="btn-ignore-selected-top10" class="btn btn-danger" style="display: none;" data-default-label="❌ IGNORE SELECTED" onclick="bulkUpdateStatus('ignored')">
+                         ❌ IGNORE SELECTED
+                      </button>
+                      <button id="btn-copy-selected-full" class="btn btn-secondary" style="display: none;" data-default-label="📋 COPY SELECTED FULL POSTS" onclick="copySelectedFullPosts(this)">
+                         📋 COPY SELECTED FULL POSTS
+                      </button>
+                  </div>
+              </div>
               <button id="btn-expand-toggle" class="btn btn-primary" onclick="toggleTop10View()">
                  ➕ EXPAND ALL 10 POSTS
               </button>
