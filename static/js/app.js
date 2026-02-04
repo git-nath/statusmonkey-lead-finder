@@ -264,7 +264,8 @@ async function loadStats() {
       stats.emergency || 0;
     document.getElementById("stat-hot").textContent = stats.hot;
     document.getElementById("stat-warm").textContent = stats.warm;
-    document.getElementById("stat-cold").textContent = stats.cold;
+    const coldEl = document.getElementById("stat-cold");
+    if (coldEl) coldEl.textContent = stats.cold;
     document.getElementById("stat-contacted").textContent = stats.contacted;
     document.getElementById("stat-converted").textContent = stats.converted;
     document.getElementById("stat-revenue").textContent =

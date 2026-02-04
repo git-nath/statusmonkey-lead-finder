@@ -240,11 +240,6 @@ body {
   color: #ffaa00;
 }
 
-.stat-card.cold {
-  border-color: #4499ff;
-  color: #4499ff;
-}
-
 .stat-card.revenue {
   border-color: #00ff00;
   color: #00ff00;
