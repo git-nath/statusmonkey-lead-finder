@@ -911,7 +911,7 @@ body {
 
 /* Highlight pinned lead when scrolled to */
 .lead-card.highlight {
-  animation: highlight-pulse 1s ease;
+  animation: highlight-pulse 1.2s ease infinite;
   border: 2px solid #ffa500 !important;
 }
 
