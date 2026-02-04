@@ -346,7 +346,7 @@ function createLeadCard(lead, index) {
   return `
    <div class="lead-card ${priorityClass}" data-id="${
     lead.id
-  }" ondblclick="handleLeadCardDoubleClick(event, '${lead.id}')" style="cursor: pointer;">
+  }" onclick="handleLeadCardClick(event, '${lead.id}')" ondblclick="handleLeadCardDoubleClick(event, '${lead.id}')" style="cursor: pointer;">
 
 
 
@@ -495,11 +495,23 @@ function createLeadCard(lead, index) {
 }
 
 function handleLeadCardDoubleClick(event, leadId) {
-  if (isTop10CompactMode) {
+  if (currentFilter === "top10") {
     event.stopPropagation();
     return;
   }
   copyFullPost(leadId);
+}
+
+function handleLeadCardClick(event, leadId) {
+  if (currentFilter !== "top10") {
+    return;
+  }
+  if (event.target.closest("button, a, input, .lead-checkbox")) {
+    return;
+  }
+  const card = document.querySelector(`.lead-card[data-id="${leadId}"]`);
+  if (!card) return;
+  card.classList.toggle("compact-view");
 }
 
 // Show reply template modal
@@ -753,18 +765,17 @@ function filterLeads(filter) {
       // Show the Expand All button
       checkHideControls('top10');
       
-      // Preserve expansion state when reloading Top 10
+      // Default to compact view when entering Top 10
+      isTop10Expanded = false;
+      isTop10CompactMode = true;
       const btn = document.getElementById("btn-expand-toggle");
       if (btn) {
-        btn.innerHTML = isTop10Expanded
-          ? "➖ CONTRACT (COMPACT VIEW)"
-          : "➕ EXPAND ALL 10 POSTS";
+        btn.innerHTML = "➕ EXPAND ALL 10 POSTS";
+        btn.disabled = false;
       }
 
       displayLeads(filtered, { bypassStatus: true, isTop10: true });
-      if (isTop10CompactMode && !isTop10Expanded) {
-        contractAllTop10();
-      }
+      contractAllTop10();
       updateTop10MarqueeMenu();
       return;
   }
