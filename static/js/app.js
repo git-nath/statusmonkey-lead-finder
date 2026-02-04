@@ -327,6 +327,11 @@ function displayLeads(leads, options = {}) {
       const card = document.querySelector(`.lead-card[data-id="${id}"]`);
       if(card) card.classList.add('selected');
   });
+
+  if (currentFilter === "all") {
+      isAllCompactMode = true;
+      contractAllLeads();
+  }
   
   updateBulkToolbar();
 }
