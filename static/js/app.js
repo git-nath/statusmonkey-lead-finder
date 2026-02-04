@@ -1580,13 +1580,28 @@ async function toggleTop10View() {
     if (isTop10Expanded) {
         // CONTRACT
         contractAllTop10();
-        btn.innerHTML = "➕ EXPAND ALL 10 POSTS";
+        if (btn) {
+            btn.innerHTML = "➕ EXPAND ALL 10 POSTS";
+            btn.disabled = false;
+        }
         isTop10Expanded = false;
     } else {
         // EXPAND
-        await expandAllTop10();
-        btn.innerHTML = "➖ CONTRACT (COMPACT VIEW)";
-        isTop10Expanded = true;
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = "⏳ EXPANDING...";
+        }
+        try {
+            await expandAllTop10();
+            if (btn) {
+                btn.innerHTML = "➖ CONTRACT (COMPACT VIEW)";
+            }
+            isTop10Expanded = true;
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+            }
+        }
     }
     updateTop10MarqueeMenu();
 }
