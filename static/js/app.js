@@ -1836,12 +1836,20 @@ function clearMarqueeSelection() {
 
 function updateTop10CopySelectedButton() {
     const button = document.getElementById("btn-copy-selected-full");
+    const ignoreButton = document.getElementById("btn-ignore-selected-top10");
     if (!button) return;
     if (selectedLeads.size > 0) {
         button.style.display = "inline-flex";
         button.textContent = `📋 COPY SELECTED FULL POSTS (${selectedLeads.size})`;
+        if (ignoreButton) {
+            ignoreButton.style.display = "inline-flex";
+            ignoreButton.textContent = `❌ IGNORE SELECTED (${selectedLeads.size})`;
+        }
     } else {
         button.style.display = "none";
+        if (ignoreButton) {
+            ignoreButton.style.display = "none";
+        }
     }
 }
 

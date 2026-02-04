@@ -225,6 +225,9 @@
               <button class="btn btn-secondary" onclick="toggleSelectAll()">
                   ✅ SELECT ALL
               </button>
+              <button id="btn-ignore-selected-top10" class="btn btn-danger" style="display: none;" data-default-label="❌ IGNORE SELECTED" onclick="bulkUpdateStatus('ignored')">
+                 ❌ IGNORE SELECTED
+              </button>
               <button id="btn-copy-selected-full" class="btn btn-secondary" style="display: none;" data-default-label="📋 COPY SELECTED FULL POSTS" onclick="copySelectedFullPosts(this)">
                  📋 COPY SELECTED FULL POSTS
               </button>
