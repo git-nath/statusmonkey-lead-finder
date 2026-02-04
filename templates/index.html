@@ -182,19 +182,129 @@
               color: #8b949e;
               white-space: nowrap;
           }
+
+          #marquee-selection-box {
+              position: fixed;
+              border: 1px dashed #00ff41;
+              background: rgba(0, 255, 65, 0.12);
+              z-index: 2000;
+              pointer-events: none;
+              display: none;
+          }
+
+          .marquee-active {
+              user-select: none;
+              cursor: crosshair;
+          }
+
+          #top10-marquee-menu {
+              position: fixed;
+              right: 20px;
+              bottom: 90px;
+              background: #0d1117;
+              border: 1px solid #00ff41;
+              padding: 10px 12px;
+              border-radius: 8px;
+              display: none;
+              align-items: center;
+              gap: 10px;
+              z-index: 1100;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+          }
+
+          #top10-marquee-menu .count {
+              color: #00ff41;
+              font-weight: 600;
+          }
+
+          .top10-actions {
+              display: grid;
+              grid-template-columns: auto auto auto;
+              grid-template-rows: auto auto;
+              justify-content: center;
+              align-items: center;
+              column-gap: 10px;
+              row-gap: 6px;
+          }
+
+          .top10-select-stack {
+              display: contents;
+          }
+
+          .top10-select-primary {
+              grid-column: 1;
+              grid-row: 1;
+              justify-self: center;
+          }
+
+          .top10-expand-primary {
+              grid-column: 2;
+              grid-row: 1;
+              justify-self: center;
+          }
+
+          .top10-copy-primary {
+              grid-column: 3;
+              grid-row: 1;
+              justify-self: center;
+          }
+
+          .top10-select-secondary {
+              grid-column: 1;
+              grid-row: 2;
+              display: flex;
+              gap: 8px;
+              justify-content: flex-start;
+              justify-self: start;
+              padding-left: 0;
+              min-height: 36px;
+              max-height: 36px;
+              opacity: 0;
+              transform: translateY(-6px);
+              transition: opacity 0.25s ease, transform 0.25s ease;
+              pointer-events: none;
+          }
+
+          .top10-select-secondary.is-visible {
+              opacity: 1;
+              transform: translateY(0);
+              pointer-events: auto;
+          }
+
+          .top10-select-secondary .btn {
+              transition: transform 0.2s ease, box-shadow 0.2s ease;
+          }
+
+          .top10-select-secondary.is-visible .btn {
+              animation: pop-in 0.25s ease;
+          }
+
+          @keyframes pop-in {
+              0% { transform: scale(0.96); opacity: 0.6; }
+              100% { transform: scale(1); opacity: 1; }
+          }
       </style>
 
        <!-- Top 10 Expand Controls - NEW -->
-       <div id="top10-controls" style="display: none; margin-bottom: 20px; padding: 10px; border: 1px dashed #00ff41; text-align: center;">
-          <h3 style="margin: 0 0 10px 0;">🏆 Top 10 High Priority Leads</h3>
-          <div style="display: flex; justify-content: center; gap: 10px;">
-              <button class="btn btn-secondary" onclick="toggleSelectAll()">
-                  ✅ SELECT ALL
-              </button>
-              <button id="btn-expand-toggle" class="btn btn-primary" onclick="toggleTop10View()">
+       <div id="top10-controls" style="display: none; margin-bottom: 20px; padding: 6px 10px; border: 1px dashed #00ff41; text-align: center;">
+          <div class="top10-actions">
+              <div class="top10-select-stack">
+                  <button class="btn btn-secondary top10-select-primary" onclick="toggleSelectAll()">
+                      ✅ SELECT ALL
+                  </button>
+                  <div id="top10-select-secondary" class="top10-select-secondary">
+                      <button id="btn-ignore-selected-top10" class="btn btn-danger" style="display: none;" data-default-label="❌ IGNORE SELECTED" onclick="bulkUpdateStatus('ignored')">
+                         ❌ IGNORE SELECTED
+                      </button>
+                      <button id="btn-copy-selected-full" class="btn btn-secondary" style="display: none;" data-default-label="📋 COPY SELECTED FULL POSTS" onclick="copySelectedFullPosts(this)">
+                         📋 COPY SELECTED FULL POSTS
+                      </button>
+                  </div>
+              </div>
+              <button id="btn-expand-toggle" class="btn btn-primary top10-expand-primary" onclick="toggleTop10View()">
                  ➕ EXPAND ALL 10 POSTS
               </button>
-              <button class="btn btn-secondary" onclick="copyAllVisible()">
+              <button class="btn btn-secondary top10-copy-primary" onclick="copyAllVisible()">
                  📋 COPY ALL VISIBLE
               </button>
           </div>
@@ -236,6 +346,8 @@
             <button class="btn btn-primary" onclick="bulkUpdateStatus('contacted')" style="margin-right: 10px;">📧 Mark Contacted</button>
             <button class="btn btn-danger" onclick="bulkUpdateStatus('ignored')">❌ Ignore</button>
       </div>
+
+      <div id="top10-marquee-menu" style="display: none;"></div>
 
       <!-- Action Bar -->
       <section class="action-bar">
