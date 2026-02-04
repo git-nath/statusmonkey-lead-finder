@@ -220,11 +220,10 @@
           .top10-actions {
               display: grid;
               grid-template-columns: auto auto auto;
-              grid-template-rows: auto auto;
               justify-content: center;
               align-items: center;
               column-gap: 10px;
-              row-gap: 6px;
+              position: relative;
           }
 
           .top10-select-stack {
@@ -250,15 +249,12 @@
           }
 
           .top10-select-secondary {
-              grid-column: 1;
-              grid-row: 2;
+              position: absolute;
+              left: 0;
+              top: calc(100% + 6px);
               display: flex;
               gap: 8px;
               justify-content: flex-start;
-              justify-self: start;
-              padding-left: 0;
-              min-height: 36px;
-              max-height: 36px;
               opacity: 0;
               transform: translateY(-6px);
               transition: opacity 0.25s ease, transform 0.25s ease;
@@ -286,7 +282,7 @@
       </style>
 
        <!-- Top 10 Expand Controls - NEW -->
-       <div id="top10-controls" style="display: none; margin-bottom: 20px; padding: 6px 50px; border: 1px dashed #00ff41; text-align: center;">
+       <div id="top10-controls" style="display: none; margin-bottom: 20px; padding: 6px 50px 48px; border: 1px dashed #00ff41; text-align: center;">
           <div class="top10-actions">
               <div class="top10-select-stack">
                   <button class="btn btn-secondary top10-select-primary" onclick="toggleSelectAll()">
