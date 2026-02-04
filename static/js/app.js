@@ -33,6 +33,8 @@ const PANEL_OPEN_KEY = "statusmonkeyUtilityPanelOpen";
 const LAST_OPENED_LEAD_KEY = "statusmonkeyLastOpenedLead";
 const LAST_OPENED_LEAD_TIMESTAMP_KEY = "statusmonkeyLastOpenedLeadAt";
 const OPEN_POST_HIGHLIGHT_CLASS = "highlight";
+const DAILY_GOAL_KEY = "statusmonkeyDailyContactGoal";
+const DAILY_CONTACT_KEY = "statusmonkeyDailyContactCount";
 
 function getStoredItems(key, fallback) {
   const raw = localStorage.getItem(key);
@@ -71,6 +73,7 @@ document.addEventListener("DOMContentLoaded", function () {
   restoreUtilityPanel();
   setupMarqueeSelection();
   setupOpenPostHighlight();
+  setupDailyContactGoal();
 
   // Default to Today view
 });
@@ -594,6 +597,8 @@ async function scanReddit() {
 
 async function updateStatus(leadId, status) {
   try {
+    const lead = allLeads.find((l) => l.id === leadId);
+    const previousStatus = lead ? lead.status || "new" : null;
     const response = await fetch(`/api/lead/${leadId}`, {
       method: "PUT",
       headers: {
@@ -604,9 +609,12 @@ async function updateStatus(leadId, status) {
 
     if (response.ok) {
       // ✅ UPDATE: Update lead in memory FIRST
-      const lead = allLeads.find((l) => l.id === leadId);
       if (lead) {
         lead.status = status;
+      }
+
+      if (status === "contacted" && previousStatus !== "contacted") {
+        incrementDailyContactCount();
       }
 
       // ✅ UPDATE: Refresh counts immediately
@@ -621,6 +629,79 @@ async function updateStatus(leadId, status) {
   } catch (error) {
     console.error("Error updating status:", error);
     showError("Failed to update lead");
+  }
+}
+
+function setupDailyContactGoal() {
+  const input = document.getElementById("daily-goal-input");
+  if (!input) return;
+
+  const storedGoal = Number(localStorage.getItem(DAILY_GOAL_KEY) || "0");
+  input.value = storedGoal > 0 ? storedGoal : "";
+
+  input.addEventListener("change", () => {
+    const value = Math.max(0, Number(input.value || 0));
+    localStorage.setItem(DAILY_GOAL_KEY, value.toString());
+    updateDailyGoalDisplay();
+  });
+
+  updateDailyGoalDisplay();
+}
+
+function getTodayKey() {
+  return new Date().toISOString().split("T")[0];
+}
+
+function getDailyContactState() {
+  const raw = localStorage.getItem(DAILY_CONTACT_KEY);
+  if (!raw) {
+    return { date: getTodayKey(), count: 0 };
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed.date !== getTodayKey()) {
+      return { date: getTodayKey(), count: 0 };
+    }
+    return parsed;
+  } catch (error) {
+    return { date: getTodayKey(), count: 0 };
+  }
+}
+
+function setDailyContactState(state) {
+  localStorage.setItem(DAILY_CONTACT_KEY, JSON.stringify(state));
+}
+
+function incrementDailyContactCount() {
+  const state = getDailyContactState();
+  const nextState = {
+    date: getTodayKey(),
+    count: state.count + 1,
+  };
+  setDailyContactState(nextState);
+  updateDailyGoalDisplay();
+}
+
+function updateDailyGoalDisplay() {
+  const goal = Number(localStorage.getItem(DAILY_GOAL_KEY) || "0");
+  const state = getDailyContactState();
+  const count = state.count;
+
+  const countEl = document.getElementById("daily-contact-count");
+  const goalEl = document.getElementById("daily-contact-goal");
+  const banner = document.getElementById("daily-goal-banner");
+  const bannerCount = document.getElementById("daily-goal-banner-count");
+
+  if (countEl) countEl.textContent = count.toString();
+  if (goalEl) goalEl.textContent = goal.toString();
+
+  if (banner && bannerCount) {
+    if (goal > 0 && count >= goal) {
+      banner.style.display = "block";
+      bannerCount.textContent = count.toString();
+    } else {
+      banner.style.display = "none";
+    }
   }
 }
 

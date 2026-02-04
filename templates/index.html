@@ -50,6 +50,21 @@
           <div class="stat-value" id="stat-contacted">0</div>
         </div>
         <div class="stat-card">
+          <div class="stat-label">🎯 Daily Contact Goal</div>
+          <div class="stat-value">
+            <span id="daily-contact-count">0</span> / <span id="daily-contact-goal">0</span>
+          </div>
+          <div style="margin-top: 8px;">
+            <input
+              id="daily-goal-input"
+              type="number"
+              min="0"
+              placeholder="Set goal"
+              style="width: 100%; padding: 6px 8px; background: #0d1117; border: 1px solid #30363d; color: #e6edf3; border-radius: 6px;"
+            />
+          </div>
+        </div>
+        <div class="stat-card">
           <div class="stat-label">💰 Converted</div>
           <div class="stat-value" id="stat-converted">0</div>
         </div>
@@ -58,6 +73,9 @@
           <div class="stat-value" id="stat-revenue">$0</div>
         </div>
       </section>
+      <div id="daily-goal-banner" style="display: none; margin: 10px 0 20px; padding: 10px 14px; border: 1px solid #00ff41; border-radius: 8px; color: #00ff41; text-align: center;">
+        ✅ Daily goal reached! Contacts today: <span id="daily-goal-banner-count">0</span>
+      </div>
       <!-- Status Tabs - TASK 26 -->
       <section class="status-tabs" style="position: relative;">
         <!-- Select All Checkbox -->
@@ -255,7 +273,7 @@
               display: flex;
               gap: 8px;
               justify-content: flex-start;
-              padding-left: 300px;
+              padding-left: 40px;
               opacity: 0;
               transform: translateY(-6px);
               transition: opacity 0.25s ease, transform 0.25s ease;
