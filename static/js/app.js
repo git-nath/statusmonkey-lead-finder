@@ -330,7 +330,7 @@ function displayLeads(leads, options = {}) {
 
   if (currentFilter === "all") {
       isAllCompactMode = true;
-      contractAllLeads();
+      applyAllCompactView();
   }
   
   updateBulkToolbar();
@@ -690,7 +690,7 @@ function filterLeads(filter) {
   if (filter === "all") {
     displayLeads(filtered);
     isAllCompactMode = true;
-    contractAllLeads();
+    applyAllCompactView();
     return;
   }
   if (filter === "emergency") {
@@ -1645,6 +1645,18 @@ function contractAllLeads() {
     const cards = document.querySelectorAll("#leads-container .lead-card");
     cards.forEach(card => {
         card.classList.add("compact-view");
+    });
+}
+
+function applyAllCompactView() {
+    if (currentFilter !== "all") return;
+    requestAnimationFrame(() => {
+        contractAllLeads();
+        setTimeout(() => {
+            if (currentFilter === "all") {
+                contractAllLeads();
+            }
+        }, 0);
     });
 }
 
