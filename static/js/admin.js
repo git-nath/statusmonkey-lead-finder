@@ -1,9 +1,12 @@
 // StatusMonkey Admin Dashboard Logic
 
+const TOP10_PROMPT_KEY = "statusmonkeyTop10Prompt";
+
 document.addEventListener('DOMContentLoaded', function() {
     loadAdminStats();
     loadAdminKeywords();
     loadDatabaseFiles();
+    setupTop10PromptEditor();
 });
 
 // Load administrative stats
@@ -210,4 +213,33 @@ function exportLeads() {
     // In app.py /api/stats returns JSON. 
     // I'll leave this as a reminder to implement proper CSV export if needed.
     showNotification('Export feature coming soon to admin panel. Use Dashboard for now.');
+}
+
+function setupTop10PromptEditor() {
+    const input = document.getElementById("top10-prompt-input");
+    const status = document.getElementById("top10-prompt-status");
+    if (!input) return;
+
+    const storedPrompt = localStorage.getItem(TOP10_PROMPT_KEY) || "";
+    input.value = storedPrompt;
+    if (status) {
+        status.textContent = storedPrompt
+            ? "Prompt loaded from browser storage."
+            : "Tip: Save updates here, then use the new Top 10 copy button to include this prompt.";
+    }
+}
+
+function saveTop10Prompt() {
+    const input = document.getElementById("top10-prompt-input");
+    const status = document.getElementById("top10-prompt-status");
+    if (!input) return;
+
+    const value = input.value.trim();
+    localStorage.setItem(TOP10_PROMPT_KEY, value);
+    if (status) {
+        status.textContent = value
+            ? "✅ Prompt saved and ready for Top 10 exports."
+            : "⚠️ Prompt cleared. Add text to include it in exports.";
+    }
+    showNotification("✅ Top 10 prompt saved.");
 }
