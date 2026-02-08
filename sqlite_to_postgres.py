@@ -5,6 +5,8 @@ from pathlib import Path
 # Requires DATABASE_URL to be set in a local .env file for Supabase/Postgres.
 from dotenv import load_dotenv
 
+from psycopg2.extras import execute_batch
+
 from db_postgres import get_postgres_connection, wrap_connection
 
 
@@ -82,7 +84,7 @@ def fetch_rows(sqlite_conn, table):
     return columns, rows
 
 
-def migrate_table(pg_conn, table, columns, rows):
+def migrate_table(pg_conn, table, columns, rows, batch_size=500):
     if not rows:
         return 0
 
@@ -94,8 +96,15 @@ def migrate_table(pg_conn, table, columns, rows):
     )
 
     cursor = pg_conn.cursor()
-    cursor.executemany(insert_sql, rows)
-    return cursor.rowcount
+    inserted = 0
+    total = len(rows)
+    for start in range(0, total, batch_size):
+        batch = rows[start : start + batch_size]
+        execute_batch(cursor, insert_sql, batch, page_size=batch_size)
+        pg_conn.commit()
+        inserted += len(batch)
+        print(f"  Inserted {min(start + batch_size, total)} / {total} rows into {table}")
+    return inserted
 
 
 def main():
@@ -117,6 +126,7 @@ def main():
         columns, primary_keys = get_table_columns(sqlite_conn, table)
         create_postgres_table(pg_conn, table, columns, primary_keys)
         column_names, rows = fetch_rows(sqlite_conn, table)
+        print(f"Migrating table: {table} ({len(rows)} rows)")
         migrated[table] = migrate_table(pg_conn, table, column_names, rows)
 
     pg_conn.commit()
