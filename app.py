@@ -11,7 +11,6 @@ from db import (
     dict_from_row,
     get_db_connection,
     initialize_database,
-    is_postgres_enabled,
 )
 
 app = Flask(__name__)
@@ -24,8 +23,8 @@ notion = Client(auth=NOTION_API_KEY)
 # ============================================
 # DATABASE HELPER FUNCTIONS
 # ============================================
-# To switch to Supabase Postgres, set USE_POSTGRES=true and DATABASE_URL
-# in a local .env file. SQLite remains the default backend.
+# All reads/writes now go to Supabase Postgres via DATABASE_URL.
+# SQLite is no longer used at runtime.
 
 # ============================================
 # KEYWORDS & SCORING (Unchanged)
@@ -418,13 +417,10 @@ def get_admin_stats():
     inactive_subs = c.fetchone()['count']
     
     # New leads in last 24h
-    if is_postgres_enabled():
-        c.execute(
-            "SELECT COUNT(*) as count FROM leads "
-            "WHERE found_at::timestamp >= NOW() - INTERVAL '1 day'"
-        )
-    else:
-        c.execute("SELECT COUNT(*) as count FROM leads WHERE found_at >= datetime('now', '-1 day')")
+    c.execute(
+        "SELECT COUNT(*) as count FROM leads "
+        "WHERE found_at::timestamp >= NOW() - INTERVAL '1 day'"
+    )
     new_24h = c.fetchone()['count']
     
     conn.close()
@@ -670,98 +666,7 @@ def get_next_thread_number():
 
 def init_db():
     """Initialize the database and ensure all tables and columns exist"""
-    if is_postgres_enabled():
-        initialize_database()
-        return
-
-    conn = get_db_connection()
-    c = conn.cursor()
-    
-    # 1. Create leads table
-    c.execute('''
-    CREATE TABLE IF NOT EXISTS leads (
-        id TEXT PRIMARY KEY,
-        title TEXT NOT NULL,
-        author TEXT,
-        subreddit TEXT,
-        score INTEGER,
-        comments INTEGER,
-        url TEXT,
-        text TEXT,
-        created REAL,
-        created_readable TEXT,
-        priority TEXT,
-        matched_keywords TEXT,
-        suggested_template TEXT,
-        lead_score INTEGER,
-        status TEXT DEFAULT 'new',
-        notes TEXT,
-        replied_at TEXT,
-        converted INTEGER DEFAULT 0,
-        revenue REAL DEFAULT 0,
-        found_at TEXT,
-        status_updated_at TEXT,
-        sent_to_notion INTEGER DEFAULT 0,
-        notion_thread_number INTEGER
-    )
-    ''')
-    
-    # 2. Create subreddits table
-    c.execute('''
-    CREATE TABLE IF NOT EXISTS subreddits (
-        name TEXT PRIMARY KEY,
-        priority TEXT DEFAULT 'medium_priority',
-        active INTEGER DEFAULT 1,
-        added_date TEXT
-    )
-    ''')
-    
-    # 3. Create templates table
-    c.execute('''
-    CREATE TABLE IF NOT EXISTS templates (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE NOT NULL,
-        content TEXT NOT NULL
-    )
-    ''')
-    
-    # 4. Check for existing columns (for migrations if leads table existed)
-    c.execute("PRAGMA table_info(leads)")
-    columns = [col[1] for col in c.fetchall()]
-    if 'sent_to_notion' not in columns:
-        c.execute('ALTER TABLE leads ADD COLUMN sent_to_notion INTEGER DEFAULT 0')
-    if 'notion_thread_number' not in columns:
-        c.execute('ALTER TABLE leads ADD COLUMN notion_thread_number INTEGER')
-
-    # 5. Insert default templates if missing
-    default_templates = [
-        ('downtime_issue', 'Hey! I use StatusMonkey.co for this - it checks every 60 seconds and sends SMS alerts instantly. Only $5.99/mo (free during beta). Has saved me multiple times!'),
-        ('competitor_complaint', 'If you think [COMPETITOR] is expensive, check out StatusMonkey. $5.99/mo with 60-second checks, SMS alerts, AND a status page included. Currently free during beta.'),
-        ('recommendation', 'I have been using StatusMonkey and it is solid. 60-second monitoring, instant SMS/email alerts, and you get a status page. Best part? Only $5.99/mo and free during beta.')
-    ]
-    for name, content in default_templates:
-        try:
-            c.execute('INSERT OR IGNORE INTO templates (name, content) VALUES (?, ?)', (name, content))
-        except: pass
-
-    # 6. Insert default subreddits if table is empty
-    c.execute('SELECT COUNT(*) as count FROM subreddits')
-    if c.fetchone()['count'] == 0:
-        default_subs = [
-            ('webdev', 'high_priority'),
-            ('saas', 'medium_priority'),
-            ('indiehackers', 'high_priority'),
-            ('startups', 'medium_priority')
-        ]
-        for name, priority in default_subs:
-            try:
-                c.execute('INSERT INTO subreddits (name, priority, added_date) VALUES (?, ?, ?)',
-                         (name, priority, datetime.now().isoformat()))
-            except: pass
-
-    conn.commit()
-    conn.close()
-    print("Database initialized successfully!")
+    initialize_database()
 
 # Initialize database on startup
 init_db()

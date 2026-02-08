@@ -2,6 +2,8 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 
 class PostgresCursorWrapper:
     def __init__(self, cursor):
@@ -51,23 +53,7 @@ class PostgresConnectionWrapper:
         return getattr(self._connection, name)
 
 
-def load_dotenv(dotenv_path=None):
-    """Load a local .env file into os.environ without external dependencies."""
-    if dotenv_path is None:
-        dotenv_path = Path(__file__).resolve().parent / ".env"
-
-    if not dotenv_path.exists():
-        return
-
-    for line in dotenv_path.read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        key = key.strip()
-        value = value.strip().strip('"').strip("'")
-        if key and key not in os.environ:
-            os.environ[key] = value
+SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"
 
 
 def get_postgres_connection():
@@ -89,57 +75,10 @@ def initialize_postgres_db(connection):
     """Create Postgres tables that mirror the existing SQLite schema."""
     cursor = connection.cursor()
 
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS leads (
-            id TEXT PRIMARY KEY,
-            title TEXT NOT NULL,
-            author TEXT,
-            subreddit TEXT,
-            score INTEGER,
-            comments INTEGER,
-            url TEXT,
-            text TEXT,
-            created DOUBLE PRECISION,
-            created_readable TEXT,
-            priority TEXT,
-            matched_keywords TEXT,
-            suggested_template TEXT,
-            lead_score INTEGER,
-            status TEXT DEFAULT 'new',
-            notes TEXT,
-            replied_at TEXT,
-            converted INTEGER DEFAULT 0,
-            revenue DOUBLE PRECISION DEFAULT 0,
-            found_at TEXT,
-            status_updated_at TEXT,
-            sent_to_notion INTEGER DEFAULT 0,
-            notion_thread_number INTEGER
-        )
-        """
-    )
-
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS subreddits (
-            id SERIAL PRIMARY KEY,
-            name TEXT UNIQUE NOT NULL,
-            added_date TEXT DEFAULT CURRENT_TIMESTAMP,
-            active INTEGER DEFAULT 1,
-            priority TEXT DEFAULT 'medium_priority'
-        )
-        """
-    )
-
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS templates (
-            id SERIAL PRIMARY KEY,
-            name TEXT UNIQUE NOT NULL,
-            content TEXT NOT NULL
-        )
-        """
-    )
+    schema_sql = SCHEMA_PATH.read_text()
+    statements = [stmt.strip() for stmt in schema_sql.split(";") if stmt.strip()]
+    for statement in statements:
+        cursor.execute(statement)
 
     connection.commit()
 
