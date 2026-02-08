@@ -2,10 +2,17 @@ from flask import Flask, render_template, jsonify, request
 import requests
 import time
 import json
-import sqlite3
 from datetime import datetime
 import os
 from notion_client import Client
+
+from db import (
+    DBIntegrityError,
+    dict_from_row,
+    get_db_connection,
+    initialize_database,
+    is_postgres_enabled,
+)
 
 app = Flask(__name__)
 
@@ -17,16 +24,8 @@ notion = Client(auth=NOTION_API_KEY)
 # ============================================
 # DATABASE HELPER FUNCTIONS
 # ============================================
-
-def get_db_connection():
-    """Create database connection with Row factory for dict-like access"""
-    conn = sqlite3.connect('leads.db')
-    conn.row_factory = sqlite3.Row
-    return conn
-
-def dict_from_row(row):
-    """Convert sqlite3.Row to dictionary"""
-    return dict(zip(row.keys(), row))
+# To switch to Supabase Postgres, set USE_POSTGRES=true and DATABASE_URL
+# in a local .env file. SQLite remains the default backend.
 
 # ============================================
 # KEYWORDS & SCORING (Unchanged)
@@ -419,7 +418,13 @@ def get_admin_stats():
     inactive_subs = c.fetchone()['count']
     
     # New leads in last 24h
-    c.execute("SELECT COUNT(*) as count FROM leads WHERE found_at >= datetime('now', '-1 day')")
+    if is_postgres_enabled():
+        c.execute(
+            "SELECT COUNT(*) as count FROM leads "
+            "WHERE found_at::timestamp >= NOW() - INTERVAL '1 day'"
+        )
+    else:
+        c.execute("SELECT COUNT(*) as count FROM leads WHERE found_at >= datetime('now', '-1 day')")
     new_24h = c.fetchone()['count']
     
     conn.close()
@@ -593,7 +598,7 @@ def add_subreddit():
         conn.commit()
         conn.close()
         return jsonify({'success': True, 'message': f'Added r/{subreddit_name}'})
-    except sqlite3.IntegrityError:
+    except DBIntegrityError:
         conn.close()
         return jsonify({'success': False, 'error': 'Subreddit already exists'}), 400
 
@@ -665,6 +670,10 @@ def get_next_thread_number():
 
 def init_db():
     """Initialize the database and ensure all tables and columns exist"""
+    if is_postgres_enabled():
+        initialize_database()
+        return
+
     conn = get_db_connection()
     c = conn.cursor()
     
