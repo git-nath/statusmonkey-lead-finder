@@ -58,10 +58,14 @@ SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"
 
 def get_postgres_connection():
     """Create a raw psycopg2 connection using DATABASE_URL."""
+    load_dotenv(SCHEMA_PATH.parent / ".env")
     load_dotenv()
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
-        raise ValueError("DATABASE_URL is not set. Add it to your .env file.")
+        raise ValueError(
+            "DATABASE_URL is not set. Add it to your .env file "
+            f"({SCHEMA_PATH.parent / '.env'})."
+        )
     import psycopg2
 
     return psycopg2.connect(database_url)
