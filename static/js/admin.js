@@ -1,12 +1,15 @@
 // StatusMonkey Admin Dashboard Logic
 
 const TOP10_PROMPT_KEY = "statusmonkeyTop10Prompt";
+const EXIT_REMINDER_DISMISSED_KEY = "statusmonkeyExitReminderDismissed";
+const EXIT_REMINDER_PENDING_KEY = "statusmonkeyExitReminderPending";
 
 document.addEventListener('DOMContentLoaded', function() {
     loadAdminStats();
     loadAdminKeywords();
     loadDatabaseFiles();
     setupTop10PromptEditor();
+    setupExitReminder();
 });
 
 // Load administrative stats
@@ -242,4 +245,57 @@ function saveTop10Prompt() {
             : "⚠️ Prompt cleared. Add text to include it in exports.";
     }
     showNotification("✅ Top 10 prompt saved.");
+}
+
+function setupExitReminder() {
+    const modal = document.getElementById("exit-reminder-modal");
+    if (!modal) return;
+
+    const handleBeforeUnload = (event) => {
+        if (sessionStorage.getItem(EXIT_REMINDER_DISMISSED_KEY) === "true") {
+            return;
+        }
+        sessionStorage.setItem(EXIT_REMINDER_PENDING_KEY, "true");
+        event.preventDefault();
+        event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("focus", showExitReminderIfPending);
+    document.addEventListener("visibilitychange", showExitReminderIfPending);
+
+    showExitReminderIfPending();
+}
+
+function openExitReminder() {
+    const modal = document.getElementById("exit-reminder-modal");
+    if (modal) {
+        modal.style.display = "flex";
+    }
+}
+
+function dismissExitReminder() {
+    const modal = document.getElementById("exit-reminder-modal");
+    if (modal) {
+        modal.style.display = "none";
+    }
+}
+
+function acknowledgeExitReminder() {
+    sessionStorage.setItem(EXIT_REMINDER_DISMISSED_KEY, "true");
+    sessionStorage.removeItem(EXIT_REMINDER_PENDING_KEY);
+    dismissExitReminder();
+    showNotification("✅ Exit reminder dismissed. Close the tab when ready.");
+}
+
+function showExitReminderIfPending() {
+    if (document.visibilityState === "hidden") {
+        return;
+    }
+    const modal = document.getElementById("exit-reminder-modal");
+    if (!modal) return;
+    if (sessionStorage.getItem(EXIT_REMINDER_PENDING_KEY) === "true") {
+        sessionStorage.removeItem(EXIT_REMINDER_PENDING_KEY);
+        openExitReminder();
+    }
 }
