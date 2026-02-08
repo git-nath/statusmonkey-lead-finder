@@ -1,7 +1,10 @@
 import os
 import sqlite3
+from pathlib import Path
 
 # Requires DATABASE_URL to be set in a local .env file for Supabase/Postgres.
+from dotenv import load_dotenv
+
 from db_postgres import get_postgres_connection, wrap_connection
 
 
@@ -96,6 +99,8 @@ def migrate_table(pg_conn, table, columns, rows):
 
 
 def main():
+    load_dotenv(Path(__file__).resolve().parent / ".env")
+    print(f"Using DATABASE_URL: {os.getenv('DATABASE_URL')}")
     sqlite_path = os.getenv("SQLITE_PATH", "leads.db")
     if not os.path.exists(sqlite_path):
         raise FileNotFoundError(f"SQLite database not found: {sqlite_path}")
