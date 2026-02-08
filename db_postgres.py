@@ -2,9 +2,6 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-import psycopg2
-from psycopg2.extras import RealDictCursor
-
 
 class PostgresCursorWrapper:
     def __init__(self, cursor):
@@ -38,6 +35,8 @@ class PostgresConnectionWrapper:
         self._connection = connection
 
     def cursor(self):
+        from psycopg2.extras import RealDictCursor
+
         return PostgresCursorWrapper(
             self._connection.cursor(cursor_factory=RealDictCursor)
         )
@@ -77,6 +76,8 @@ def get_postgres_connection():
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
         raise ValueError("DATABASE_URL is not set. Add it to your .env file.")
+    import psycopg2
+
     return psycopg2.connect(database_url)
 
 
