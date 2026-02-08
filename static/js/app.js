@@ -36,6 +36,7 @@ const OPEN_POST_HIGHLIGHT_CLASS = "highlight";
 const DAILY_GOAL_KEY = "statusmonkeyDailyContactGoal";
 const DAILY_CONTACT_KEY = "statusmonkeyDailyContactCount";
 const TOP10_PROMPT_KEY = "statusmonkeyTop10Prompt";
+const EXIT_REMINDER_DISMISSED_KEY = "statusmonkeyExitReminderDismissed";
 
 function getStoredItems(key, fallback) {
   const raw = localStorage.getItem(key);
@@ -75,6 +76,7 @@ document.addEventListener("DOMContentLoaded", function () {
   setupMarqueeSelection();
   setupOpenPostHighlight();
   setupDailyContactGoal();
+  setupExitReminder();
 
   // Default to Today view
 });
@@ -707,6 +709,40 @@ function updateDailyGoalDisplay() {
       banner.style.display = "none";
     }
   }
+}
+
+function setupExitReminder() {
+  const modal = document.getElementById("exit-reminder-modal");
+  if (!modal) return;
+
+  window.addEventListener("beforeunload", (event) => {
+    if (sessionStorage.getItem(EXIT_REMINDER_DISMISSED_KEY) === "true") {
+      return;
+    }
+    event.preventDefault();
+    event.returnValue = "";
+    openExitReminder();
+  });
+}
+
+function openExitReminder() {
+  const modal = document.getElementById("exit-reminder-modal");
+  if (modal) {
+    modal.style.display = "flex";
+  }
+}
+
+function dismissExitReminder() {
+  const modal = document.getElementById("exit-reminder-modal");
+  if (modal) {
+    modal.style.display = "none";
+  }
+}
+
+function acknowledgeExitReminder() {
+  sessionStorage.setItem(EXIT_REMINDER_DISMISSED_KEY, "true");
+  dismissExitReminder();
+  showNotification("✅ Exit reminder dismissed. Close the tab when ready.");
 }
 
 // Mark lead as converted

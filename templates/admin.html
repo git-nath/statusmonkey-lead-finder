@@ -77,7 +77,7 @@
           </section>
       </div>
 
-      <section class="admin-panel" style="margin-top: 30px; border: 2px solid #4f46e5; padding: 24px; background: rgba(79, 70, 229, 0.08);">
+    <section class="admin-panel" style="margin-top: 30px; border: 2px solid #4f46e5; padding: 24px; background: rgba(79, 70, 229, 0.08);">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
               <div>
                   <h2 style="color: #a5b4fc; margin-bottom: 6px;">🧠 Top 10 Copy Prompt Editor</h2>
@@ -94,6 +94,38 @@
           ></textarea>
           <p id="top10-prompt-status" style="margin-top: 12px; font-size: 0.85em; color: #9ca3af;">Tip: Save updates here, then use the new Top 10 copy button to include this prompt.</p>
       </section>
+    </div>
+
+    <!-- Exit Reminder Modal -->
+    <div id="exit-reminder-modal" class="modal" style="display: none">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>💾 Terminal Reminder</h2>
+          <button class="modal-close" onclick="dismissExitReminder()">✕</button>
+        </div>
+        <div class="modal-body exit-reminder-body">
+          <p style="margin: 0; color: #00ff41; font-weight: 600;">
+            ⏳ Wait — commit and push your database before closing.
+          </p>
+          <div class="terminal-command-box">
+            <pre>git status
+git add leads.db
+git commit -m "Update leads database"
+git push</pre>
+          </div>
+          <p class="exit-reminder-note">
+            Run these commands manually in your terminal (nothing runs in the background).
+          </p>
+          <div class="modal-actions">
+            <button class="btn btn-primary" onclick="acknowledgeExitReminder()">
+              ✅ I pushed — let me close
+            </button>
+            <button class="btn btn-secondary" onclick="dismissExitReminder()">
+              ⏰ Remind me next time
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Re-use Subreddit Settings Modal -->
