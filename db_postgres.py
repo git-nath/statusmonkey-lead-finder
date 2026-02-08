@@ -10,6 +10,8 @@ class PostgresCursorWrapper:
         self._cursor = cursor
 
     def execute(self, query, params=None):
+        if isinstance(query, bytes):
+            query = query.decode()
         converted = query.replace("?", "%s")
         if params is None:
             return self._cursor.execute(converted)
