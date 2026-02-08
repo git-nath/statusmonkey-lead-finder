@@ -1,12 +1,14 @@
 // StatusMonkey Admin Dashboard Logic
 
 const TOP10_PROMPT_KEY = "statusmonkeyTop10Prompt";
+const EXIT_REMINDER_DISMISSED_KEY = "statusmonkeyExitReminderDismissed";
 
 document.addEventListener('DOMContentLoaded', function() {
     loadAdminStats();
     loadAdminKeywords();
     loadDatabaseFiles();
     setupTop10PromptEditor();
+    setupExitReminder();
 });
 
 // Load administrative stats
@@ -242,4 +244,38 @@ function saveTop10Prompt() {
             : "⚠️ Prompt cleared. Add text to include it in exports.";
     }
     showNotification("✅ Top 10 prompt saved.");
+}
+
+function setupExitReminder() {
+    const modal = document.getElementById("exit-reminder-modal");
+    if (!modal) return;
+
+    window.addEventListener("beforeunload", (event) => {
+        if (sessionStorage.getItem(EXIT_REMINDER_DISMISSED_KEY) === "true") {
+            return;
+        }
+        event.preventDefault();
+        event.returnValue = "";
+        openExitReminder();
+    });
+}
+
+function openExitReminder() {
+    const modal = document.getElementById("exit-reminder-modal");
+    if (modal) {
+        modal.style.display = "flex";
+    }
+}
+
+function dismissExitReminder() {
+    const modal = document.getElementById("exit-reminder-modal");
+    if (modal) {
+        modal.style.display = "none";
+    }
+}
+
+function acknowledgeExitReminder() {
+    sessionStorage.setItem(EXIT_REMINDER_DISMISSED_KEY, "true");
+    dismissExitReminder();
+    showNotification("✅ Exit reminder dismissed. Close the tab when ready.");
 }
