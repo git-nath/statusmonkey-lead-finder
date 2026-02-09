@@ -310,6 +310,9 @@
                       <button id="btn-copy-selected-full" class="btn btn-secondary" style="display: none;" data-default-label="📋 COPY SELECTED FULL POSTS" onclick="copySelectedFullPosts(this)">
                          📋 COPY SELECTED FULL POSTS
                       </button>
+                      <button id="btn-copy-selected-full-prompt" class="btn btn-secondary" style="display: none;" data-default-label="🧠 COPY FULL POSTS + PROMPT" onclick="copySelectedFullPostsWithPrompt(this)">
+                         🧠 COPY FULL POSTS + PROMPT
+                      </button>
                   </div>
               </div>
               <button id="btn-expand-toggle" class="btn btn-primary top10-expand-primary" onclick="toggleTop10View()">
@@ -479,6 +482,37 @@
           >
             ⏰ Later
           </button>
+        </div>
+      </div>
+    </div>
+    <!-- Exit Reminder Modal -->
+    <div id="exit-reminder-modal" class="modal" style="display: none">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>💾 Terminal Reminder</h2>
+          <button class="modal-close" onclick="dismissExitReminder()">✕</button>
+        </div>
+        <div class="modal-body exit-reminder-body">
+          <p style="margin: 0; color: #00ff41; font-weight: 600;">
+            ⏳ Wait — commit and push your database before closing.
+          </p>
+          <div class="terminal-command-box">
+            <pre>git status
+git add leads.db
+git commit -m "Update leads database"
+git push</pre>
+          </div>
+          <p class="exit-reminder-note">
+            Run these commands manually in your terminal (nothing runs in the background).
+          </p>
+          <div class="modal-actions">
+            <button class="btn btn-primary" onclick="acknowledgeExitReminder()">
+              ✅ I pushed — let me close
+            </button>
+            <button class="btn btn-secondary" onclick="dismissExitReminder()">
+              ⏰ Remind me next time
+            </button>
+          </div>
         </div>
       </div>
     </div>

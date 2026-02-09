@@ -35,6 +35,8 @@ const LAST_OPENED_LEAD_TIMESTAMP_KEY = "statusmonkeyLastOpenedLeadAt";
 const OPEN_POST_HIGHLIGHT_CLASS = "highlight";
 const DAILY_GOAL_KEY = "statusmonkeyDailyContactGoal";
 const DAILY_CONTACT_KEY = "statusmonkeyDailyContactCount";
+const TOP10_PROMPT_KEY = "statusmonkeyTop10Prompt";
+const EXIT_REMINDER_DISMISSED_KEY = "statusmonkeyExitReminderDismissed";
 
 function getStoredItems(key, fallback) {
   const raw = localStorage.getItem(key);
@@ -74,6 +76,7 @@ document.addEventListener("DOMContentLoaded", function () {
   setupMarqueeSelection();
   setupOpenPostHighlight();
   setupDailyContactGoal();
+  setupExitReminder();
 
   // Default to Today view
 });
@@ -706,6 +709,40 @@ function updateDailyGoalDisplay() {
       banner.style.display = "none";
     }
   }
+}
+
+function setupExitReminder() {
+  const modal = document.getElementById("exit-reminder-modal");
+  if (!modal) return;
+
+  window.addEventListener("beforeunload", (event) => {
+    if (sessionStorage.getItem(EXIT_REMINDER_DISMISSED_KEY) === "true") {
+      return;
+    }
+    event.preventDefault();
+    event.returnValue = "";
+    openExitReminder();
+  });
+}
+
+function openExitReminder() {
+  const modal = document.getElementById("exit-reminder-modal");
+  if (modal) {
+    modal.style.display = "flex";
+  }
+}
+
+function dismissExitReminder() {
+  const modal = document.getElementById("exit-reminder-modal");
+  if (modal) {
+    modal.style.display = "none";
+  }
+}
+
+function acknowledgeExitReminder() {
+  sessionStorage.setItem(EXIT_REMINDER_DISMISSED_KEY, "true");
+  dismissExitReminder();
+  showNotification("✅ Exit reminder dismissed. Close the tab when ready.");
 }
 
 // Mark lead as converted
@@ -1920,12 +1957,17 @@ function clearMarqueeSelection() {
 
 function updateTop10CopySelectedButton() {
     const button = document.getElementById("btn-copy-selected-full");
+    const promptButton = document.getElementById("btn-copy-selected-full-prompt");
     const ignoreButton = document.getElementById("btn-ignore-selected-top10");
     const secondaryRow = document.getElementById("top10-select-secondary");
     if (!button) return;
     if (selectedLeads.size > 0) {
         button.style.display = "inline-flex";
         button.textContent = `📋 COPY SELECTED FULL POSTS (${selectedLeads.size})`;
+        if (promptButton) {
+            promptButton.style.display = "inline-flex";
+            promptButton.textContent = `🧠 COPY FULL POSTS + PROMPT (${selectedLeads.size})`;
+        }
         if (ignoreButton) {
             ignoreButton.style.display = "inline-flex";
             ignoreButton.textContent = `❌ IGNORE SELECTED (${selectedLeads.size})`;
@@ -1935,6 +1977,9 @@ function updateTop10CopySelectedButton() {
         }
     } else {
         button.style.display = "none";
+        if (promptButton) {
+            promptButton.style.display = "none";
+        }
         if (ignoreButton) {
             ignoreButton.style.display = "none";
         }
@@ -2091,6 +2136,77 @@ async function copySelectedFullPosts(button) {
     try {
         await navigator.clipboard.writeText(fullText);
         showNotification(`✅ Copied ${results.length} full posts to clipboard!`);
+    } catch (error) {
+        console.error(error);
+        showError("Failed to copy to clipboard");
+    } finally {
+        if (targetButton) {
+            targetButton.disabled = false;
+            targetButton.textContent = originalLabel;
+        }
+    }
+}
+
+async function copySelectedFullPostsWithPrompt(button) {
+    if (selectedLeads.size === 0) {
+        showError("No leads selected to copy");
+        return;
+    }
+
+    const prompt = (localStorage.getItem(TOP10_PROMPT_KEY) || "").trim();
+    if (!prompt) {
+        showError("No prompt saved. Add one in the Admin prompt editor first.");
+        return;
+    }
+
+    const targetButton = button || null;
+    let originalLabel = "";
+    if (targetButton) {
+        originalLabel =
+            targetButton.getAttribute("data-default-label") ||
+            targetButton.textContent;
+        targetButton.textContent = "⏳ COPYING WITH PROMPT...";
+        targetButton.disabled = true;
+    }
+
+    const cards = Array.from(document.querySelectorAll("#leads-container .lead-card"))
+        .filter(card => selectedLeads.has(card.getAttribute("data-id")));
+    const leadIds = cards.length > 0
+        ? cards.map(card => card.getAttribute("data-id"))
+        : Array.from(selectedLeads);
+
+    const results = await Promise.all(
+        leadIds.map(async (id) => {
+            try {
+                const response = await fetch(`/api/reddit/full/${id}`);
+                const data = await response.json();
+                if (data.success) {
+                    return { id, data };
+                }
+                return { id, error: data.error || "Failed to fetch" };
+            } catch (error) {
+                console.error(error);
+                return { id, error: "Failed to fetch" };
+            }
+        })
+    );
+
+    let fullPostsText = "";
+    results.forEach((result, index) => {
+        fullPostsText += `LEAD #${index + 1}\n`;
+        if (result.data) {
+            fullPostsText += `${buildFullPostContent(result.data)}\n`;
+        } else {
+            fullPostsText += `ERROR: ${result.error}\n\n`;
+        }
+        fullPostsText += "\n";
+    });
+
+    const finalText = `prompt [\n${prompt}\n]\n\n================\nfull post [\n${fullPostsText.trim()}\n]\n`;
+
+    try {
+        await navigator.clipboard.writeText(finalText);
+        showNotification(`✅ Copied ${results.length} full posts with prompt!`);
     } catch (error) {
         console.error(error);
         showError("Failed to copy to clipboard");
