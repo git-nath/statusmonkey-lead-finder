@@ -203,6 +203,7 @@ def scan_reddit():
                         created, created_readable, priority, matched_keywords,
                         suggested_template, lead_score, status, found_at
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT (id) DO NOTHING
                 ''', (
                     post['id'],
                     post['title'],
