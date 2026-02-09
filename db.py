@@ -40,7 +40,23 @@ def dict_from_row(row):
 
 
 def initialize_database():
-    conn = wrap_connection(get_postgres_connection())
+    try:
+        conn = wrap_connection(get_postgres_connection())
+    except Exception as exc:
+        try:
+            import psycopg2
+
+            if isinstance(exc, psycopg2.OperationalError) and (
+                "MaxClientsInSessionMode" in str(exc)
+            ):
+                print(
+                    "⚠️ Postgres pool is full; skipping init for now. "
+                    "Retry after pool frees up."
+                )
+                return
+        except Exception:
+            pass
+        raise
     initialize_postgres_db(conn)
     conn.close()
     print("Postgres database initialized successfully!")
