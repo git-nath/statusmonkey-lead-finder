@@ -161,6 +161,7 @@ body.simple-dashboard .toggle-btn.active {
 body.simple-dashboard .status-tabs {
   border-color: #2d3339;
   background: rgba(27, 31, 34, 0.95);
+  justify-content: center;
 }
 
 body.simple-dashboard .tab-btn {
