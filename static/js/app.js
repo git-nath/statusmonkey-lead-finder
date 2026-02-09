@@ -37,6 +37,7 @@ const DAILY_GOAL_KEY = "statusmonkeyDailyContactGoal";
 const DAILY_CONTACT_KEY = "statusmonkeyDailyContactCount";
 const TOP10_PROMPT_KEY = "statusmonkeyTop10Prompt";
 const EXIT_REMINDER_DISMISSED_KEY = "statusmonkeyExitReminderDismissed";
+const DASHBOARD_VIEW_KEY = "statusmonkeyDashboardView";
 
 function getStoredItems(key, fallback) {
   const raw = localStorage.getItem(key);
@@ -76,10 +77,30 @@ document.addEventListener("DOMContentLoaded", function () {
   setupMarqueeSelection();
   setupOpenPostHighlight();
   setupDailyContactGoal();
+  setupDashboardViewToggle();
   setupExitReminder();
 
   // Default to Today view
 });
+
+function setupDashboardViewToggle() {
+  const detailedButton = document.getElementById("toggle-detailed");
+  const simpleButton = document.getElementById("toggle-simple");
+  if (!detailedButton || !simpleButton) return;
+
+  const applyView = (view) => {
+    document.body.classList.toggle("simple-dashboard", view === "simple");
+    detailedButton.classList.toggle("active", view !== "simple");
+    simpleButton.classList.toggle("active", view === "simple");
+    localStorage.setItem(DASHBOARD_VIEW_KEY, view);
+  };
+
+  const storedView = localStorage.getItem(DASHBOARD_VIEW_KEY) || "detailed";
+  applyView(storedView);
+
+  detailedButton.addEventListener("click", () => applyView("detailed"));
+  simpleButton.addEventListener("click", () => applyView("simple"));
+}
 
 function setupSidebarInputs() {
   const noteInput = document.getElementById("note-input");
@@ -640,7 +661,11 @@ function setupDailyContactGoal() {
   const input = document.getElementById("daily-goal-input");
   if (!input) return;
 
-  const storedGoal = Number(localStorage.getItem(DAILY_GOAL_KEY) || "0");
+  const storedGoalRaw = localStorage.getItem(DAILY_GOAL_KEY);
+  const storedGoal = Number(storedGoalRaw || "10");
+  if (!storedGoalRaw) {
+    localStorage.setItem(DAILY_GOAL_KEY, storedGoal.toString());
+  }
   input.value = storedGoal > 0 ? storedGoal : "";
 
   input.addEventListener("change", () => {
@@ -687,18 +712,22 @@ function incrementDailyContactCount() {
 }
 
 function updateDailyGoalDisplay() {
-  const goal = Number(localStorage.getItem(DAILY_GOAL_KEY) || "0");
+  const goal = Number(localStorage.getItem(DAILY_GOAL_KEY) || "10");
   const state = getDailyContactState();
   const count = state.count;
 
   const countEl = document.getElementById("daily-contact-count");
   const goalEl = document.getElementById("daily-contact-goal");
+  const simpleCountEl = document.getElementById("simple-daily-contact-count");
+  const simpleGoalEl = document.getElementById("simple-daily-contact-goal");
   const banner = document.getElementById("daily-goal-banner");
   const bannerCount = document.getElementById("daily-goal-banner-count");
   const bannerGoal = document.getElementById("daily-goal-banner-goal");
 
   if (countEl) countEl.textContent = count.toString();
   if (goalEl) goalEl.textContent = goal.toString();
+  if (simpleCountEl) simpleCountEl.textContent = count.toString();
+  if (simpleGoalEl) simpleGoalEl.textContent = goal.toString();
 
   if (banner && bannerCount) {
     if (goal > 0 && count >= goal) {
@@ -1327,6 +1356,23 @@ function updateStatusCounts() {
       el.textContent = statusCounts[key];
     }
   });
+
+  updateSimpleStats();
+}
+
+function updateSimpleStats() {
+  const simpleAll = document.getElementById("simple-stat-all");
+  const simpleTop10 = document.getElementById("simple-stat-top10");
+  const simpleContacted = document.getElementById("simple-stat-contacted");
+  const simpleIgnored = document.getElementById("simple-stat-ignored");
+
+  if (simpleAll) simpleAll.textContent = statusCounts.all.toString();
+  if (simpleContacted) simpleContacted.textContent = statusCounts.contacted.toString();
+  if (simpleIgnored) simpleIgnored.textContent = statusCounts.ignored.toString();
+  if (simpleTop10) {
+    const top10Count = Math.min(10, allLeads.length);
+    simpleTop10.textContent = top10Count.toString();
+  }
 }
 
 // ============================================
