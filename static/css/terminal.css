@@ -88,9 +88,11 @@ body {
 }
 
 body.simple-dashboard {
-  background: #141617;
-  color: #e5e7eb;
-  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  background: #1b1f22;
+  color: #e6e6e6;
+  font-family: "Space Grotesk", "Inter", "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 body.simple-dashboard .terminal-header h1,
@@ -119,43 +121,52 @@ body.simple-dashboard #daily-goal-banner {
 
 body.simple-dashboard .simple-stats-grid {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  align-items: stretch;
 }
 
 body.simple-dashboard .simple-stat-card {
-  background: #1a1d1f;
-  border: 1px solid #2a2f33;
-  color: #e5e7eb;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  background: #20252a;
+  border: 1px solid #2d3339;
+  color: #e6e6e6;
+  box-shadow: none;
+  border-radius: 14px;
 }
 
 body.simple-dashboard .simple-stat-card .stat-label {
-  color: #9ca3af;
+  color: #a8b0b8;
+  font-weight: 500;
 }
 
 body.simple-dashboard .simple-goal-note {
-  color: #9ca3af;
+  color: #9aa3ac;
+}
+
+body.simple-dashboard .simple-goal-card {
+  grid-column: span 1;
 }
 
 body.simple-dashboard .toggle-btn {
-  border-color: #2a2f33;
-  color: #e5e7eb;
+  border-color: #2d3339;
+  color: #e6e6e6;
 }
 
 body.simple-dashboard .toggle-btn.active {
   background: #0b5fa8;
   color: #f8fafc;
-  box-shadow: 0 0 16px rgba(11, 95, 168, 0.45);
+  box-shadow: none;
 }
 
 body.simple-dashboard .status-tabs {
-  border-color: #2a2f33;
-  background: rgba(19, 21, 22, 0.9);
+  border-color: #2d3339;
+  background: rgba(27, 31, 34, 0.95);
 }
 
 body.simple-dashboard .tab-btn {
-  border-color: #2a2f33;
-  background: #1a1d1f;
-  color: #cbd5f5;
+  border-color: #2d3339;
+  background: #20252a;
+  color: #cbd5e1;
 }
 
 body.simple-dashboard .tab-btn.active {
@@ -175,6 +186,12 @@ body.simple-dashboard .lead-card {
   border-color: #2a2f33;
   background: #1a1d1f;
   color: #e5e7eb;
+}
+
+@media (max-width: 900px) {
+  body.simple-dashboard .simple-stats-grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
 }
 
 .utility-panel {
