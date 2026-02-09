@@ -26,3 +26,5 @@ Thumbs.db
 # *.db
 # *.sqlite
 
+# .env
+.env
