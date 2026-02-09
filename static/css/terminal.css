@@ -82,8 +82,8 @@ body {
 }
 
 body.simple-dashboard {
-  background: #f8fafc;
-  color: #0f172a;
+  background: #141617;
+  color: #e5e7eb;
   font-family: "Inter", "Segoe UI", system-ui, sans-serif;
 }
 
@@ -93,17 +93,17 @@ body.simple-dashboard .nav-link,
 body.simple-dashboard .tab-btn,
 body.simple-dashboard .stat-label,
 body.simple-dashboard .stat-value {
-  color: #0f172a;
+  color: #e5e7eb;
 }
 
 body.simple-dashboard .terminal-nav {
-  border-color: #e2e8f0;
-  background: #ffffff;
+  border-color: #2a2f33;
+  background: rgba(19, 21, 22, 0.9);
 }
 
 body.simple-dashboard .nav-link.active {
-  background: #0f172a;
-  color: #ffffff;
+  background: #0b5fa8;
+  color: #f8fafc;
 }
 
 body.simple-dashboard .stats-grid,
@@ -115,30 +115,46 @@ body.simple-dashboard .simple-stats-grid {
   display: grid;
 }
 
+body.simple-dashboard .simple-stat-card {
+  background: #1a1d1f;
+  border: 1px solid #2a2f33;
+  color: #e5e7eb;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+body.simple-dashboard .simple-stat-card .stat-label {
+  color: #9ca3af;
+}
+
+body.simple-dashboard .simple-goal-note {
+  color: #9ca3af;
+}
+
 body.simple-dashboard .toggle-btn {
-  border-color: #0f172a;
-  color: #0f172a;
+  border-color: #2a2f33;
+  color: #e5e7eb;
 }
 
 body.simple-dashboard .toggle-btn.active {
-  background: #0f172a;
-  color: #ffffff;
-  box-shadow: none;
+  background: #0b5fa8;
+  color: #f8fafc;
+  box-shadow: 0 0 16px rgba(11, 95, 168, 0.45);
 }
 
 body.simple-dashboard .status-tabs {
-  border-color: #e2e8f0;
-  background: #ffffff;
+  border-color: #2a2f33;
+  background: rgba(19, 21, 22, 0.9);
 }
 
 body.simple-dashboard .tab-btn {
-  border-color: #e2e8f0;
-  background: #f8fafc;
+  border-color: #2a2f33;
+  background: #1a1d1f;
+  color: #cbd5f5;
 }
 
 body.simple-dashboard .tab-btn.active {
-  background: #0f172a;
-  color: #ffffff;
+  background: #0b5fa8;
+  color: #f8fafc;
 }
 
 body.simple-dashboard .tab-btn[data-status="replied"],
@@ -150,9 +166,9 @@ body.simple-dashboard .tab-btn[onclick*="filterLeads('hot')"] {
 }
 
 body.simple-dashboard .lead-card {
-  border-color: #e2e8f0;
-  background: #ffffff;
-  color: #0f172a;
+  border-color: #2a2f33;
+  background: #1a1d1f;
+  color: #e5e7eb;
 }
 
 .utility-panel {
