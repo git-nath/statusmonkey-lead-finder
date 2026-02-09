@@ -35,8 +35,10 @@ const LAST_OPENED_LEAD_TIMESTAMP_KEY = "statusmonkeyLastOpenedLeadAt";
 const OPEN_POST_HIGHLIGHT_CLASS = "highlight";
 const DAILY_GOAL_KEY = "statusmonkeyDailyContactGoal";
 const DAILY_CONTACT_KEY = "statusmonkeyDailyContactCount";
+const DAILY_IGNORED_KEY = "statusmonkeyDailyIgnoredCount";
 const TOP10_PROMPT_KEY = "statusmonkeyTop10Prompt";
 const EXIT_REMINDER_DISMISSED_KEY = "statusmonkeyExitReminderDismissed";
+const DASHBOARD_VIEW_KEY = "statusmonkeyDashboardView";
 
 function getStoredItems(key, fallback) {
   const raw = localStorage.getItem(key);
@@ -76,10 +78,30 @@ document.addEventListener("DOMContentLoaded", function () {
   setupMarqueeSelection();
   setupOpenPostHighlight();
   setupDailyContactGoal();
+  setupDashboardViewToggle();
   setupExitReminder();
 
   // Default to Today view
 });
+
+function setupDashboardViewToggle() {
+  const detailedButton = document.getElementById("toggle-detailed");
+  const simpleButton = document.getElementById("toggle-simple");
+  if (!detailedButton || !simpleButton) return;
+
+  const applyView = (view) => {
+    document.body.classList.toggle("simple-dashboard", view === "simple");
+    detailedButton.classList.toggle("active", view !== "simple");
+    simpleButton.classList.toggle("active", view === "simple");
+    localStorage.setItem(DASHBOARD_VIEW_KEY, view);
+  };
+
+  const storedView = localStorage.getItem(DASHBOARD_VIEW_KEY) || "detailed";
+  applyView(storedView);
+
+  detailedButton.addEventListener("click", () => applyView("detailed"));
+  simpleButton.addEventListener("click", () => applyView("simple"));
+}
 
 function setupSidebarInputs() {
   const noteInput = document.getElementById("note-input");
@@ -620,6 +642,9 @@ async function updateStatus(leadId, status) {
       if (status === "contacted" && previousStatus !== "contacted") {
         incrementDailyContactCount();
       }
+      if (status === "ignored" && previousStatus !== "ignored") {
+        incrementDailyIgnoredCount();
+      }
 
       // ✅ UPDATE: Refresh counts immediately
       updateStatusCounts();
@@ -640,7 +665,11 @@ function setupDailyContactGoal() {
   const input = document.getElementById("daily-goal-input");
   if (!input) return;
 
-  const storedGoal = Number(localStorage.getItem(DAILY_GOAL_KEY) || "0");
+  const storedGoalRaw = localStorage.getItem(DAILY_GOAL_KEY);
+  const storedGoal = Number(storedGoalRaw || "10");
+  if (!storedGoalRaw) {
+    localStorage.setItem(DAILY_GOAL_KEY, storedGoal.toString());
+  }
   input.value = storedGoal > 0 ? storedGoal : "";
 
   input.addEventListener("change", () => {
@@ -672,8 +701,28 @@ function getDailyContactState() {
   }
 }
 
+function getDailyIgnoredState() {
+  const raw = localStorage.getItem(DAILY_IGNORED_KEY);
+  if (!raw) {
+    return { date: getTodayKey(), count: 0 };
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed.date !== getTodayKey()) {
+      return { date: getTodayKey(), count: 0 };
+    }
+    return parsed;
+  } catch (error) {
+    return { date: getTodayKey(), count: 0 };
+  }
+}
+
 function setDailyContactState(state) {
   localStorage.setItem(DAILY_CONTACT_KEY, JSON.stringify(state));
+}
+
+function setDailyIgnoredState(state) {
+  localStorage.setItem(DAILY_IGNORED_KEY, JSON.stringify(state));
 }
 
 function incrementDailyContactCount() {
@@ -686,19 +735,36 @@ function incrementDailyContactCount() {
   updateDailyGoalDisplay();
 }
 
+function incrementDailyIgnoredCount() {
+  const state = getDailyIgnoredState();
+  const nextState = {
+    date: getTodayKey(),
+    count: state.count + 1,
+  };
+  setDailyIgnoredState(nextState);
+  updateDailyGoalDisplay();
+}
+
 function updateDailyGoalDisplay() {
-  const goal = Number(localStorage.getItem(DAILY_GOAL_KEY) || "0");
+  const goal = Number(localStorage.getItem(DAILY_GOAL_KEY) || "10");
   const state = getDailyContactState();
   const count = state.count;
+  const ignoredState = getDailyIgnoredState();
 
   const countEl = document.getElementById("daily-contact-count");
   const goalEl = document.getElementById("daily-contact-goal");
+  const simpleCountEl = document.getElementById("simple-daily-contact-count");
+  const simpleGoalEl = document.getElementById("simple-daily-contact-goal");
+  const simpleIgnoredEl = document.getElementById("simple-stat-ignored");
   const banner = document.getElementById("daily-goal-banner");
   const bannerCount = document.getElementById("daily-goal-banner-count");
   const bannerGoal = document.getElementById("daily-goal-banner-goal");
 
   if (countEl) countEl.textContent = count.toString();
   if (goalEl) goalEl.textContent = goal.toString();
+  if (simpleCountEl) simpleCountEl.textContent = count.toString();
+  if (simpleGoalEl) simpleGoalEl.textContent = goal.toString();
+  if (simpleIgnoredEl) simpleIgnoredEl.textContent = ignoredState.count.toString();
 
   if (banner && bannerCount) {
     if (goal > 0 && count >= goal) {
@@ -712,17 +778,8 @@ function updateDailyGoalDisplay() {
 }
 
 function setupExitReminder() {
-  const modal = document.getElementById("exit-reminder-modal");
-  if (!modal) return;
-
-  window.addEventListener("beforeunload", (event) => {
-    if (sessionStorage.getItem(EXIT_REMINDER_DISMISSED_KEY) === "true") {
-      return;
-    }
-    event.preventDefault();
-    event.returnValue = "";
-    openExitReminder();
-  });
+  // Exit reminder disabled for centralized database usage.
+  return;
 }
 
 function openExitReminder() {
@@ -1336,6 +1393,19 @@ function updateStatusCounts() {
       el.textContent = statusCounts[key];
     }
   });
+
+  updateSimpleStats();
+}
+
+function updateSimpleStats() {
+  const simpleContacted = document.getElementById("simple-stat-contacted");
+  const simpleIgnored = document.getElementById("simple-stat-ignored");
+
+  const contactState = getDailyContactState();
+  const ignoredState = getDailyIgnoredState();
+
+  if (simpleContacted) simpleContacted.textContent = contactState.count.toString();
+  if (simpleIgnored) simpleIgnored.textContent = ignoredState.count.toString();
 }
 
 // ============================================
