@@ -35,8 +35,10 @@ const LAST_OPENED_LEAD_TIMESTAMP_KEY = "statusmonkeyLastOpenedLeadAt";
 const OPEN_POST_HIGHLIGHT_CLASS = "highlight";
 const DAILY_GOAL_KEY = "statusmonkeyDailyContactGoal";
 const DAILY_CONTACT_KEY = "statusmonkeyDailyContactCount";
+const DAILY_IGNORED_KEY = "statusmonkeyDailyIgnoredCount";
 const TOP10_PROMPT_KEY = "statusmonkeyTop10Prompt";
 const EXIT_REMINDER_DISMISSED_KEY = "statusmonkeyExitReminderDismissed";
+const DASHBOARD_VIEW_KEY = "statusmonkeyDashboardView";
 
 function getStoredItems(key, fallback) {
   const raw = localStorage.getItem(key);
@@ -76,10 +78,30 @@ document.addEventListener("DOMContentLoaded", function () {
   setupMarqueeSelection();
   setupOpenPostHighlight();
   setupDailyContactGoal();
+  setupDashboardViewToggle();
   setupExitReminder();
 
   // Default to Today view
 });
+
+function setupDashboardViewToggle() {
+  const detailedButton = document.getElementById("toggle-detailed");
+  const simpleButton = document.getElementById("toggle-simple");
+  if (!detailedButton || !simpleButton) return;
+
+  const applyView = (view) => {
+    document.body.classList.toggle("simple-dashboard", view === "simple");
+    detailedButton.classList.toggle("active", view !== "simple");
+    simpleButton.classList.toggle("active", view === "simple");
+    localStorage.setItem(DASHBOARD_VIEW_KEY, view);
+  };
+
+  const storedView = localStorage.getItem(DASHBOARD_VIEW_KEY) || "detailed";
+  applyView(storedView);
+
+  detailedButton.addEventListener("click", () => applyView("detailed"));
+  simpleButton.addEventListener("click", () => applyView("simple"));
+}
 
 function setupSidebarInputs() {
   const noteInput = document.getElementById("note-input");
@@ -355,6 +377,25 @@ function createLeadCard(lead, index) {
   const convertedBadge = lead.converted
     ? `<span class="badge badge-converted">✓ CONVERTED</span>`
     : "";
+  const commentSnippet = lead.comment_snippet
+    ? escapeHtml(lead.comment_snippet)
+    : "No comment snippet yet.";
+  const commentAction =
+    lead.status === "contacted"
+      ? lead.comment_url
+        ? `<a class="btn-small btn-comment" href="${escapeHtml(
+            lead.comment_url
+          )}" target="_blank" rel="noopener" onclick="event.stopPropagation();">
+              💬 Comment
+              <span class="comment-tooltip">
+                <strong>${escapeHtml(lead.title)}</strong>
+                <span>${commentSnippet}</span>
+              </span>
+            </a>`
+        : `<button class="btn-small btn-comment" onclick="event.stopPropagation(); openCommentLinkModal('${lead.id}')">
+              ➕ Add Comment
+            </button>`
+      : "";
 
   const compactClass = currentFilter === "all" ? " compact-view" : "";
 
@@ -398,6 +439,7 @@ function createLeadCard(lead, index) {
                     }')">
                         📋 Copy Full
                     </button>
+                    ${commentAction}
                     <button class="btn-small btn-contacted" onclick="event.stopPropagation(); updateStatus('${
                       lead.id
                     }', 'contacted')">
@@ -480,6 +522,7 @@ function createLeadCard(lead, index) {
                 }', '${lead.suggested_template || "recommendation"}')">
                     📝 Get Reply Template
                 </button>
+                ${commentAction}
                 <button class="btn-small btn-contacted" onclick="event.stopPropagation(); updateStatus('${
                   lead.id
                 }', 'contacted')">
@@ -556,6 +599,80 @@ function closeTemplateModal() {
   document.getElementById("template-modal").style.display = "none";
 }
 
+function openCommentLinkModal(leadId) {
+  const modal = document.getElementById("comment-link-modal");
+  if (!modal) return;
+  const lead = allLeads.find((l) => l.id === leadId);
+  const linkInput = document.getElementById("comment-link-input");
+  const snippetInput = document.getElementById("comment-snippet-input");
+  modal.setAttribute("data-lead-id", leadId);
+  if (linkInput) {
+    linkInput.value = lead?.comment_url || "";
+  }
+  if (snippetInput) {
+    snippetInput.value = lead?.comment_snippet || "";
+  }
+  modal.style.display = "flex";
+}
+
+function closeCommentLinkModal() {
+  const modal = document.getElementById("comment-link-modal");
+  if (modal) {
+    modal.style.display = "none";
+  }
+}
+
+async function saveCommentLink() {
+  const modal = document.getElementById("comment-link-modal");
+  if (!modal) return;
+  const leadId = modal.getAttribute("data-lead-id");
+  const linkInput = document.getElementById("comment-link-input");
+  const snippetInput = document.getElementById("comment-snippet-input");
+  const commentUrl = linkInput ? linkInput.value.trim() : "";
+  const commentSnippet = snippetInput ? snippetInput.value.trim() : "";
+
+  if (!leadId) {
+    showError("Missing lead ID for comment link.");
+    return;
+  }
+
+  if (!commentUrl) {
+    showError("Please paste a Reddit comment link.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/lead/${leadId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        comment_url: commentUrl,
+        comment_snippet: commentSnippet,
+      }),
+    });
+
+    if (!response.ok) {
+      showError("Failed to save comment link.");
+      return;
+    }
+
+    const lead = allLeads.find((l) => l.id === leadId);
+    if (lead) {
+      lead.comment_url = commentUrl;
+      lead.comment_snippet = commentSnippet;
+    }
+
+    closeCommentLinkModal();
+    filterLeads(currentFilter);
+    showNotification("✅ Comment link saved.");
+  } catch (error) {
+    console.error("Error saving comment link:", error);
+    showError("Failed to save comment link.");
+  }
+}
+
 // Copy template to clipboard
 function copyTemplate() {
   const text = document.getElementById("template-text").value;
@@ -599,10 +716,11 @@ async function scanReddit() {
 
 // Update lead status
 
-async function updateStatus(leadId, status) {
+async function updateStatus(leadId, status, options = {}) {
   try {
     const lead = allLeads.find((l) => l.id === leadId);
     const previousStatus = lead ? lead.status || "new" : null;
+    const suppressCommentModal = options.suppressCommentModal || false;
     const response = await fetch(`/api/lead/${leadId}`, {
       method: "PUT",
       headers: {
@@ -620,6 +738,9 @@ async function updateStatus(leadId, status) {
       if (status === "contacted" && previousStatus !== "contacted") {
         incrementDailyContactCount();
       }
+      if (status === "ignored" && previousStatus !== "ignored") {
+        incrementDailyIgnoredCount();
+      }
 
       // ✅ UPDATE: Refresh counts immediately
       updateStatusCounts();
@@ -628,6 +749,14 @@ async function updateStatus(leadId, status) {
       filterLeads(currentFilter);
 
       showNotification(`✅ Lead marked as ${status}`);
+      if (
+        status === "contacted" &&
+        !suppressCommentModal &&
+        lead &&
+        !lead.comment_url
+      ) {
+        openCommentLinkModal(leadId);
+      }
       loadStats();
     }
   } catch (error) {
@@ -640,7 +769,11 @@ function setupDailyContactGoal() {
   const input = document.getElementById("daily-goal-input");
   if (!input) return;
 
-  const storedGoal = Number(localStorage.getItem(DAILY_GOAL_KEY) || "0");
+  const storedGoalRaw = localStorage.getItem(DAILY_GOAL_KEY);
+  const storedGoal = Number(storedGoalRaw || "10");
+  if (!storedGoalRaw) {
+    localStorage.setItem(DAILY_GOAL_KEY, storedGoal.toString());
+  }
   input.value = storedGoal > 0 ? storedGoal : "";
 
   input.addEventListener("change", () => {
@@ -672,8 +805,28 @@ function getDailyContactState() {
   }
 }
 
+function getDailyIgnoredState() {
+  const raw = localStorage.getItem(DAILY_IGNORED_KEY);
+  if (!raw) {
+    return { date: getTodayKey(), count: 0 };
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed.date !== getTodayKey()) {
+      return { date: getTodayKey(), count: 0 };
+    }
+    return parsed;
+  } catch (error) {
+    return { date: getTodayKey(), count: 0 };
+  }
+}
+
 function setDailyContactState(state) {
   localStorage.setItem(DAILY_CONTACT_KEY, JSON.stringify(state));
+}
+
+function setDailyIgnoredState(state) {
+  localStorage.setItem(DAILY_IGNORED_KEY, JSON.stringify(state));
 }
 
 function incrementDailyContactCount() {
@@ -686,19 +839,36 @@ function incrementDailyContactCount() {
   updateDailyGoalDisplay();
 }
 
+function incrementDailyIgnoredCount() {
+  const state = getDailyIgnoredState();
+  const nextState = {
+    date: getTodayKey(),
+    count: state.count + 1,
+  };
+  setDailyIgnoredState(nextState);
+  updateDailyGoalDisplay();
+}
+
 function updateDailyGoalDisplay() {
-  const goal = Number(localStorage.getItem(DAILY_GOAL_KEY) || "0");
+  const goal = Number(localStorage.getItem(DAILY_GOAL_KEY) || "10");
   const state = getDailyContactState();
   const count = state.count;
+  const ignoredState = getDailyIgnoredState();
 
   const countEl = document.getElementById("daily-contact-count");
   const goalEl = document.getElementById("daily-contact-goal");
+  const simpleCountEl = document.getElementById("simple-daily-contact-count");
+  const simpleGoalEl = document.getElementById("simple-daily-contact-goal");
+  const simpleIgnoredEl = document.getElementById("simple-stat-ignored");
   const banner = document.getElementById("daily-goal-banner");
   const bannerCount = document.getElementById("daily-goal-banner-count");
   const bannerGoal = document.getElementById("daily-goal-banner-goal");
 
   if (countEl) countEl.textContent = count.toString();
   if (goalEl) goalEl.textContent = goal.toString();
+  if (simpleCountEl) simpleCountEl.textContent = count.toString();
+  if (simpleGoalEl) simpleGoalEl.textContent = goal.toString();
+  if (simpleIgnoredEl) simpleIgnoredEl.textContent = ignoredState.count.toString();
 
   if (banner && bannerCount) {
     if (goal > 0 && count >= goal) {
@@ -712,17 +882,8 @@ function updateDailyGoalDisplay() {
 }
 
 function setupExitReminder() {
-  const modal = document.getElementById("exit-reminder-modal");
-  if (!modal) return;
-
-  window.addEventListener("beforeunload", (event) => {
-    if (sessionStorage.getItem(EXIT_REMINDER_DISMISSED_KEY) === "true") {
-      return;
-    }
-    event.preventDefault();
-    event.returnValue = "";
-    openExitReminder();
-  });
+  // Exit reminder disabled for centralized database usage.
+  return;
 }
 
 function openExitReminder() {
@@ -1336,6 +1497,19 @@ function updateStatusCounts() {
       el.textContent = statusCounts[key];
     }
   });
+
+  updateSimpleStats();
+}
+
+function updateSimpleStats() {
+  const simpleContacted = document.getElementById("simple-stat-contacted");
+  const simpleIgnored = document.getElementById("simple-stat-ignored");
+
+  const contactState = getDailyContactState();
+  const ignoredState = getDailyIgnoredState();
+
+  if (simpleContacted) simpleContacted.textContent = contactState.count.toString();
+  if (simpleIgnored) simpleIgnored.textContent = ignoredState.count.toString();
 }
 
 // ============================================
@@ -1996,7 +2170,9 @@ async function bulkUpdateStatus(status) {
     if(!confirm(`Mark ${count} selected leads as ${status.toUpperCase()}?`)) return;
     
     // Process all updates
-    const promises = Array.from(selectedLeads).map(id => updateStatus(id, status));
+    const promises = Array.from(selectedLeads).map(id =>
+      updateStatus(id, status, { suppressCommentModal: true })
+    );
     await Promise.all(promises);
     
     // Clear selection
