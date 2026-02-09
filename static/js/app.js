@@ -712,17 +712,8 @@ function updateDailyGoalDisplay() {
 }
 
 function setupExitReminder() {
-  const modal = document.getElementById("exit-reminder-modal");
-  if (!modal) return;
-
-  window.addEventListener("beforeunload", (event) => {
-    if (sessionStorage.getItem(EXIT_REMINDER_DISMISSED_KEY) === "true") {
-      return;
-    }
-    event.preventDefault();
-    event.returnValue = "";
-    openExitReminder();
-  });
+  // Exit reminder disabled for centralized database usage.
+  return;
 }
 
 function openExitReminder() {
