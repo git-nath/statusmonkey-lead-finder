@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>StatusMonkey Lead Finder v2.6</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="/static/css/terminal.css" />
   </head>
   <body>
@@ -22,6 +28,15 @@
           Templates
         </p>
       </header>
+
+      <div class="dashboard-toggle" aria-label="Dashboard view toggle">
+        <button class="toggle-btn" id="toggle-detailed" type="button">
+          Detailed
+        </button>
+        <button class="toggle-btn" id="toggle-simple" type="button">
+          Simple
+        </button>
+      </div>
 
       <!-- Stats Dashboard -->
       <section class="stats-grid" id="stats">
@@ -67,6 +82,25 @@
         <div class="stat-card revenue">
           <div class="stat-label">💵 Revenue</div>
           <div class="stat-value" id="stat-revenue">$0</div>
+        </div>
+      </section>
+
+      <section class="simple-stats-grid" id="simple-stats">
+        <div class="simple-stat-card">
+          <div class="stat-label">Daily Contacted</div>
+          <div class="stat-value" id="simple-stat-contacted">0</div>
+        </div>
+        <div class="simple-stat-card">
+          <div class="stat-label">Daily Ignored</div>
+          <div class="stat-value" id="simple-stat-ignored">0</div>
+        </div>
+        <div class="simple-stat-card simple-goal-card">
+          <div class="stat-label">Daily Goal</div>
+          <div class="stat-value">
+            <span id="simple-daily-contact-count">0</span> /
+            <span id="simple-daily-contact-goal">10</span>
+          </div>
+          <p class="simple-goal-note">Default goal: 10 per day.</p>
         </div>
       </section>
       <div id="daily-goal-banner" style="display: none; margin: 12px 0 22px; padding: 14px 18px; border: 1px solid #58a6ff; border-radius: 12px; color: #c9d1d9; text-align: center; background: rgba(88, 166, 255, 0.12); box-shadow: 0 0 16px rgba(88, 166, 255, 0.25); font-weight: 600;">
