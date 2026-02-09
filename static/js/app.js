@@ -35,6 +35,7 @@ const LAST_OPENED_LEAD_TIMESTAMP_KEY = "statusmonkeyLastOpenedLeadAt";
 const OPEN_POST_HIGHLIGHT_CLASS = "highlight";
 const DAILY_GOAL_KEY = "statusmonkeyDailyContactGoal";
 const DAILY_CONTACT_KEY = "statusmonkeyDailyContactCount";
+const DAILY_IGNORED_KEY = "statusmonkeyDailyIgnoredCount";
 const TOP10_PROMPT_KEY = "statusmonkeyTop10Prompt";
 const EXIT_REMINDER_DISMISSED_KEY = "statusmonkeyExitReminderDismissed";
 const DASHBOARD_VIEW_KEY = "statusmonkeyDashboardView";
@@ -641,6 +642,9 @@ async function updateStatus(leadId, status) {
       if (status === "contacted" && previousStatus !== "contacted") {
         incrementDailyContactCount();
       }
+      if (status === "ignored" && previousStatus !== "ignored") {
+        incrementDailyIgnoredCount();
+      }
 
       // ✅ UPDATE: Refresh counts immediately
       updateStatusCounts();
@@ -697,8 +701,28 @@ function getDailyContactState() {
   }
 }
 
+function getDailyIgnoredState() {
+  const raw = localStorage.getItem(DAILY_IGNORED_KEY);
+  if (!raw) {
+    return { date: getTodayKey(), count: 0 };
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed.date !== getTodayKey()) {
+      return { date: getTodayKey(), count: 0 };
+    }
+    return parsed;
+  } catch (error) {
+    return { date: getTodayKey(), count: 0 };
+  }
+}
+
 function setDailyContactState(state) {
   localStorage.setItem(DAILY_CONTACT_KEY, JSON.stringify(state));
+}
+
+function setDailyIgnoredState(state) {
+  localStorage.setItem(DAILY_IGNORED_KEY, JSON.stringify(state));
 }
 
 function incrementDailyContactCount() {
@@ -711,15 +735,27 @@ function incrementDailyContactCount() {
   updateDailyGoalDisplay();
 }
 
+function incrementDailyIgnoredCount() {
+  const state = getDailyIgnoredState();
+  const nextState = {
+    date: getTodayKey(),
+    count: state.count + 1,
+  };
+  setDailyIgnoredState(nextState);
+  updateDailyGoalDisplay();
+}
+
 function updateDailyGoalDisplay() {
   const goal = Number(localStorage.getItem(DAILY_GOAL_KEY) || "10");
   const state = getDailyContactState();
   const count = state.count;
+  const ignoredState = getDailyIgnoredState();
 
   const countEl = document.getElementById("daily-contact-count");
   const goalEl = document.getElementById("daily-contact-goal");
   const simpleCountEl = document.getElementById("simple-daily-contact-count");
   const simpleGoalEl = document.getElementById("simple-daily-contact-goal");
+  const simpleIgnoredEl = document.getElementById("simple-stat-ignored");
   const banner = document.getElementById("daily-goal-banner");
   const bannerCount = document.getElementById("daily-goal-banner-count");
   const bannerGoal = document.getElementById("daily-goal-banner-goal");
@@ -728,6 +764,7 @@ function updateDailyGoalDisplay() {
   if (goalEl) goalEl.textContent = goal.toString();
   if (simpleCountEl) simpleCountEl.textContent = count.toString();
   if (simpleGoalEl) simpleGoalEl.textContent = goal.toString();
+  if (simpleIgnoredEl) simpleIgnoredEl.textContent = ignoredState.count.toString();
 
   if (banner && bannerCount) {
     if (goal > 0 && count >= goal) {
@@ -1361,18 +1398,14 @@ function updateStatusCounts() {
 }
 
 function updateSimpleStats() {
-  const simpleAll = document.getElementById("simple-stat-all");
-  const simpleTop10 = document.getElementById("simple-stat-top10");
   const simpleContacted = document.getElementById("simple-stat-contacted");
   const simpleIgnored = document.getElementById("simple-stat-ignored");
 
-  if (simpleAll) simpleAll.textContent = statusCounts.all.toString();
-  if (simpleContacted) simpleContacted.textContent = statusCounts.contacted.toString();
-  if (simpleIgnored) simpleIgnored.textContent = statusCounts.ignored.toString();
-  if (simpleTop10) {
-    const top10Count = Math.min(10, allLeads.length);
-    simpleTop10.textContent = top10Count.toString();
-  }
+  const contactState = getDailyContactState();
+  const ignoredState = getDailyIgnoredState();
+
+  if (simpleContacted) simpleContacted.textContent = contactState.count.toString();
+  if (simpleIgnored) simpleIgnored.textContent = ignoredState.count.toString();
 }
 
 // ============================================
