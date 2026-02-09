@@ -88,6 +88,10 @@ def initialize_postgres_db(connection):
 
     connection.commit()
 
+    cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS comment_url TEXT")
+    cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS comment_snippet TEXT")
+    connection.commit()
+
     cursor.execute("SELECT COUNT(*) AS count FROM subreddits")
     if cursor.fetchone()["count"] == 0:
         default_subs = [

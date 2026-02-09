@@ -21,7 +21,9 @@ CREATE TABLE IF NOT EXISTS leads (
     found_at TEXT,
     status_updated_at TEXT,
     sent_to_notion INTEGER DEFAULT 0,
-    notion_thread_number INTEGER
+    notion_thread_number INTEGER,
+    comment_url TEXT,
+    comment_snippet TEXT
 );
 
 CREATE TABLE IF NOT EXISTS subreddits (

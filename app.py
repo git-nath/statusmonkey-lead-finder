@@ -306,6 +306,14 @@ def update_or_delete_lead(lead_id):
         revenue = 5.99 if update['converted'] else 0
         c.execute('UPDATE leads SET converted = ?, revenue = ? WHERE id = ?',
                  (converted, revenue, lead_id))
+
+    if 'comment_url' in update:
+        c.execute('UPDATE leads SET comment_url = ? WHERE id = ?',
+                  (update['comment_url'], lead_id))
+
+    if 'comment_snippet' in update:
+        c.execute('UPDATE leads SET comment_snippet = ? WHERE id = ?',
+                  (update['comment_snippet'], lead_id))
     
     conn.commit()
     conn.close()

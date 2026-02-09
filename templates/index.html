@@ -486,6 +486,46 @@
         </div>
       </div>
     </div>
+    <!-- Comment Link Modal -->
+    <div id="comment-link-modal" class="modal" style="display: none">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>💬 Add Comment Link</h2>
+          <button class="modal-close" onclick="closeCommentLinkModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <label class="modal-label" for="comment-link-input">
+            Reddit comment link
+          </label>
+          <input
+            id="comment-link-input"
+            type="url"
+            placeholder="https://www.reddit.com/r/..."
+            class="modal-input"
+          />
+          <label class="modal-label" for="comment-snippet-input">
+            Comment snippet
+          </label>
+          <textarea
+            id="comment-snippet-input"
+            rows="4"
+            placeholder="Paste a short snippet from your comment..."
+          ></textarea>
+          <p class="modal-help">
+            This link will show as a quick preview on contacted leads and open
+            the Reddit comment when clicked.
+          </p>
+          <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeCommentLinkModal()">
+              Cancel
+            </button>
+            <button class="btn btn-primary" onclick="saveCommentLink()">
+              💾 Save Comment Link
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
     <!-- Quick Action Overlay - TASK 31 -->
     <div
       id="quick-action-overlay"
