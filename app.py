@@ -402,7 +402,7 @@ def get_admin_stats():
     db_size = os.path.getsize('leads.db') if os.path.exists('leads.db') else 0
     
     # Notion Sync Rate
-    c.execute('SELECT COUNT(*) as total FROM leads WHERE status = "contacted"')
+    c.execute("SELECT COUNT(*) as total FROM leads WHERE status = 'contacted'")
     total_contacted = c.fetchone()['total']
     
     c.execute('SELECT COUNT(*) as sent FROM leads WHERE sent_to_notion = 1')
