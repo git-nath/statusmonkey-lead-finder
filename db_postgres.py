@@ -138,15 +138,7 @@ def initialize_postgres_db(connection):
 
 def ensure_lead_comment_columns(cursor):
     """Add comment columns if missing, without blocking startup on timeouts."""
-    cursor.execute(
-        """
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_name = 'leads'
-          AND column_name IN ('comment_url', 'comment_snippet')
-        """
-    )
-    existing = {row["column_name"] for row in cursor.fetchall()}
+    existing = get_leads_comment_columns(cursor)
     missing = {"comment_url", "comment_snippet"} - existing
     if not missing:
         return
@@ -167,3 +159,15 @@ def ensure_lead_comment_columns(cursor):
         except Exception:
             pass
         raise
+
+
+def get_leads_comment_columns(cursor):
+    cursor.execute(
+        """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'leads'
+          AND column_name IN ('comment_url', 'comment_snippet')
+        """
+    )
+    return {row["column_name"] for row in cursor.fetchall()}

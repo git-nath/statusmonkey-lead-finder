@@ -8,12 +8,18 @@ from notion_client import Client
 
 from db import (
     DBIntegrityError,
+    close_db_connection,
     dict_from_row,
     get_db_connection,
     initialize_database,
 )
 
 app = Flask(__name__)
+
+
+@app.teardown_appcontext
+def close_connection(exception=None):
+    close_db_connection(exception)
 
 # Notion API Configuration
 NOTION_API_KEY = "ntn_f92115249684DSCjMeZGcN7j7JU6tPkWrNRskbOj9AQ6zP"
@@ -307,13 +313,27 @@ def update_or_delete_lead(lead_id):
         c.execute('UPDATE leads SET converted = ?, revenue = ? WHERE id = ?',
                  (converted, revenue, lead_id))
 
-    if 'comment_url' in update:
-        c.execute('UPDATE leads SET comment_url = ? WHERE id = ?',
-                  (update['comment_url'], lead_id))
+    if 'comment_url' in update or 'comment_snippet' in update:
+        try:
+            from db_postgres import get_leads_comment_columns
 
-    if 'comment_snippet' in update:
-        c.execute('UPDATE leads SET comment_snippet = ? WHERE id = ?',
-                  (update['comment_snippet'], lead_id))
+            available_columns = get_leads_comment_columns(c)
+            if 'comment_url' in update and 'comment_url' in available_columns:
+                c.execute('UPDATE leads SET comment_url = ? WHERE id = ?',
+                          (update['comment_url'], lead_id))
+            if 'comment_snippet' in update and 'comment_snippet' in available_columns:
+                c.execute('UPDATE leads SET comment_snippet = ? WHERE id = ?',
+                          (update['comment_snippet'], lead_id))
+        except Exception as exc:
+            try:
+                import psycopg2
+
+                if isinstance(exc, psycopg2.errors.UndefinedColumn):
+                    pass
+                else:
+                    raise
+            except Exception:
+                raise
     
     conn.commit()
     conn.close()
