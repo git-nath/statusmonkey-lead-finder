@@ -21,6 +21,11 @@ app = Flask(__name__)
 def close_connection(exception=None):
     close_db_connection(exception)
 
+
+@app.teardown_request
+def close_connection_after_request(exception=None):
+    close_db_connection(exception)
+
 # Notion API Configuration
 NOTION_API_KEY = "ntn_f92115249684DSCjMeZGcN7j7JU6tPkWrNRskbOj9AQ6zP"
 NOTION_DATABASE_ID = "2f02250cb76880859face42b2ae7fe33"
@@ -173,68 +178,69 @@ def scan_reddit():
     """Scan Reddit for new leads"""
     conn = get_db_connection()
     c = conn.cursor()
-    
-    # Get active subreddits from database
-    c.execute('SELECT name FROM subreddits WHERE active = 1')
-    subreddits = [row['name'] for row in c.fetchall()]
-    
-    if not subreddits:
+
+    try:
+        # Get active subreddits from database
+        c.execute('SELECT name FROM subreddits WHERE active = 1')
+        subreddits = [row['name'] for row in c.fetchall()]
+
+        if not subreddits:
+            print("⚠️ No subreddits configured!")
+            return 0
+
+        # Get existing lead IDs
+        c.execute('SELECT id FROM leads')
+        existing_ids = {row['id'] for row in c.fetchall()}
+
+        new_leads = 0
+
+        for subreddit in subreddits:
+            print(f"Scanning r/{subreddit}...")
+            posts = fetch_reddit_posts(subreddit, limit=50)
+
+            for post in posts:
+                # Skip if already processed
+                if post['id'] in existing_ids:
+                    continue
+
+                # Check if post matches any keywords
+                lead_info = score_lead(post)
+
+                if lead_info['score'] > 0:
+                    # Insert lead into database
+                    c.execute('''
+                        INSERT INTO leads (
+                            id, title, author, subreddit, score, comments, url, text,
+                            created, created_readable, priority, matched_keywords,
+                            suggested_template, lead_score, status, found_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT (id) DO NOTHING
+                    ''', (
+                        post['id'],
+                        post['title'],
+                        post['author'],
+                        post['subreddit'],
+                        post['score'],
+                        post['comments'],
+                        post['url'],
+                        post['text'],
+                        post['created'],
+                        post['created_readable'],
+                        lead_info['priority'],
+                        json.dumps(lead_info['matched_keywords']),
+                        lead_info['suggested_template'],
+                        lead_info['score'],
+                        'new',
+                        datetime.now().isoformat()
+                    ))
+                    new_leads += 1
+
+            time.sleep(2)  # Rate limiting
+
+        conn.commit()
+        return new_leads
+    finally:
         conn.close()
-        print("⚠️ No subreddits configured!")
-        return 0
-    
-    # Get existing lead IDs
-    c.execute('SELECT id FROM leads')
-    existing_ids = {row['id'] for row in c.fetchall()}
-    
-    new_leads = 0
-    
-    for subreddit in subreddits:
-        print(f"Scanning r/{subreddit}...")
-        posts = fetch_reddit_posts(subreddit, limit=50)
-        
-        for post in posts:
-            # Skip if already processed
-            if post['id'] in existing_ids:
-                continue
-            
-            # Check if post matches any keywords
-            lead_info = score_lead(post)
-            
-            if lead_info['score'] > 0:
-                # Insert lead into database
-                c.execute('''
-                    INSERT INTO leads (
-                        id, title, author, subreddit, score, comments, url, text,
-                        created, created_readable, priority, matched_keywords,
-                        suggested_template, lead_score, status, found_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT (id) DO NOTHING
-                ''', (
-                    post['id'],
-                    post['title'],
-                    post['author'],
-                    post['subreddit'],
-                    post['score'],
-                    post['comments'],
-                    post['url'],
-                    post['text'],
-                    post['created'],
-                    post['created_readable'],
-                    lead_info['priority'],
-                    json.dumps(lead_info['matched_keywords']),
-                    lead_info['suggested_template'],
-                    lead_info['score'],
-                    'new',
-                    datetime.now().isoformat()
-                ))
-                new_leads += 1
-        
-        time.sleep(2)  # Rate limiting
-    
-    conn.commit()
-    conn.close()
-    return new_leads
 
 # ============================================
 # FLASK ROUTES

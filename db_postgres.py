@@ -1,4 +1,5 @@
 import os
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -70,7 +71,23 @@ def get_postgres_connection():
         )
     import psycopg2
 
-    return psycopg2.connect(database_url)
+    last_error = None
+    for attempt in range(5):
+        try:
+            return psycopg2.connect(database_url)
+        except psycopg2.OperationalError as exc:
+            message = str(exc)
+            last_error = exc
+            if "MaxClientsInSessionMode" in message:
+                wait_s = min(1 + attempt, 5)
+                print(
+                    "⚠️ Postgres connection pool is full. Retrying in "
+                    f"{wait_s}s..."
+                )
+                time.sleep(wait_s)
+                continue
+            raise
+    raise last_error
 
 
 def wrap_connection(connection):
