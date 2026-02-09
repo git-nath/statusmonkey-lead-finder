@@ -88,8 +88,7 @@ def initialize_postgres_db(connection):
 
     connection.commit()
 
-    cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS comment_url TEXT")
-    cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS comment_snippet TEXT")
+    ensure_lead_comment_columns(cursor)
     connection.commit()
 
     cursor.execute("SELECT COUNT(*) AS count FROM subreddits")
@@ -135,3 +134,36 @@ def initialize_postgres_db(connection):
         )
 
     connection.commit()
+
+
+def ensure_lead_comment_columns(cursor):
+    """Add comment columns if missing, without blocking startup on timeouts."""
+    cursor.execute(
+        """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'leads'
+          AND column_name IN ('comment_url', 'comment_snippet')
+        """
+    )
+    existing = {row["column_name"] for row in cursor.fetchall()}
+    missing = {"comment_url", "comment_snippet"} - existing
+    if not missing:
+        return
+
+    try:
+        cursor.execute("SET LOCAL statement_timeout = '5s'")
+        if "comment_url" in missing:
+            cursor.execute("ALTER TABLE leads ADD COLUMN comment_url TEXT")
+        if "comment_snippet" in missing:
+            cursor.execute("ALTER TABLE leads ADD COLUMN comment_snippet TEXT")
+    except Exception as exc:
+        try:
+            import psycopg2
+
+            if isinstance(exc, psycopg2.errors.QueryCanceled):
+                print("⚠️ Skipping comment column migration due to timeout.")
+                return
+        except Exception:
+            pass
+        raise
