@@ -319,28 +319,6 @@ def update_or_delete_lead(lead_id):
         c.execute('UPDATE leads SET converted = ?, revenue = ? WHERE id = ?',
                  (converted, revenue, lead_id))
 
-    if 'comment_url' in update or 'comment_snippet' in update:
-        try:
-            from db_postgres import get_leads_comment_columns
-
-            available_columns = get_leads_comment_columns(c)
-            if 'comment_url' in update and 'comment_url' in available_columns:
-                c.execute('UPDATE leads SET comment_url = ? WHERE id = ?',
-                          (update['comment_url'], lead_id))
-            if 'comment_snippet' in update and 'comment_snippet' in available_columns:
-                c.execute('UPDATE leads SET comment_snippet = ? WHERE id = ?',
-                          (update['comment_snippet'], lead_id))
-        except Exception as exc:
-            try:
-                import psycopg2
-
-                if isinstance(exc, psycopg2.errors.UndefinedColumn):
-                    pass
-                else:
-                    raise
-            except Exception:
-                raise
-    
     conn.commit()
     conn.close()
     return jsonify({'success': True})
@@ -703,8 +681,15 @@ def init_db():
     """Initialize the database and ensure all tables and columns exist"""
     initialize_database()
 
-# Initialize database on startup
-init_db()
+def should_initialize_database_on_startup():
+    """Avoid expensive startup migrations in the reloader parent process."""
+    if not app.debug:
+        return True
+    return os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
+
+
+if should_initialize_database_on_startup():
+    init_db()
 
 @app.route('/api/notion/add', methods=['POST'])
 def add_to_notion():

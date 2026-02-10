@@ -105,9 +105,6 @@ def initialize_postgres_db(connection):
 
     connection.commit()
 
-    ensure_lead_comment_columns(cursor)
-    connection.commit()
-
     cursor.execute("SELECT COUNT(*) AS count FROM subreddits")
     if cursor.fetchone()["count"] == 0:
         default_subs = [
