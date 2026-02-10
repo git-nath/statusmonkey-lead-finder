@@ -377,26 +377,6 @@ function createLeadCard(lead, index) {
   const convertedBadge = lead.converted
     ? `<span class="badge badge-converted">✓ CONVERTED</span>`
     : "";
-  const commentSnippet = lead.comment_snippet
-    ? escapeHtml(lead.comment_snippet)
-    : "No comment snippet yet.";
-  const commentAction =
-    lead.status === "contacted"
-      ? lead.comment_url
-        ? `<a class="btn-small btn-comment" href="${escapeHtml(
-            lead.comment_url
-          )}" target="_blank" rel="noopener" onclick="event.stopPropagation();">
-              💬 Comment
-              <span class="comment-tooltip">
-                <strong>${escapeHtml(lead.title)}</strong>
-                <span>${commentSnippet}</span>
-              </span>
-            </a>`
-        : `<button class="btn-small btn-comment" onclick="event.stopPropagation(); openCommentLinkModal('${lead.id}')">
-              ➕ Add Comment
-            </button>`
-      : "";
-
   const compactClass = currentFilter === "all" ? " compact-view" : "";
 
   return `
@@ -439,7 +419,6 @@ function createLeadCard(lead, index) {
                     }')">
                         📋 Copy Full
                     </button>
-                    ${commentAction}
                     <button class="btn-small btn-contacted" onclick="event.stopPropagation(); updateStatus('${
                       lead.id
                     }', 'contacted')">
@@ -599,80 +578,6 @@ function closeTemplateModal() {
   document.getElementById("template-modal").style.display = "none";
 }
 
-function openCommentLinkModal(leadId) {
-  const modal = document.getElementById("comment-link-modal");
-  if (!modal) return;
-  const lead = allLeads.find((l) => l.id === leadId);
-  const linkInput = document.getElementById("comment-link-input");
-  const snippetInput = document.getElementById("comment-snippet-input");
-  modal.setAttribute("data-lead-id", leadId);
-  if (linkInput) {
-    linkInput.value = lead?.comment_url || "";
-  }
-  if (snippetInput) {
-    snippetInput.value = lead?.comment_snippet || "";
-  }
-  modal.style.display = "flex";
-}
-
-function closeCommentLinkModal() {
-  const modal = document.getElementById("comment-link-modal");
-  if (modal) {
-    modal.style.display = "none";
-  }
-}
-
-async function saveCommentLink() {
-  const modal = document.getElementById("comment-link-modal");
-  if (!modal) return;
-  const leadId = modal.getAttribute("data-lead-id");
-  const linkInput = document.getElementById("comment-link-input");
-  const snippetInput = document.getElementById("comment-snippet-input");
-  const commentUrl = linkInput ? linkInput.value.trim() : "";
-  const commentSnippet = snippetInput ? snippetInput.value.trim() : "";
-
-  if (!leadId) {
-    showError("Missing lead ID for comment link.");
-    return;
-  }
-
-  if (!commentUrl) {
-    showError("Please paste a Reddit comment link.");
-    return;
-  }
-
-  try {
-    const response = await fetch(`/api/lead/${leadId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        comment_url: commentUrl,
-        comment_snippet: commentSnippet,
-      }),
-    });
-
-    if (!response.ok) {
-      showError("Failed to save comment link.");
-      return;
-    }
-
-    const lead = allLeads.find((l) => l.id === leadId);
-    if (lead) {
-      lead.comment_url = commentUrl;
-      lead.comment_snippet = commentSnippet;
-    }
-
-    closeCommentLinkModal();
-    filterLeads(currentFilter);
-    showNotification("✅ Comment link saved.");
-  } catch (error) {
-    console.error("Error saving comment link:", error);
-    showError("Failed to save comment link.");
-  }
-}
-
 // Copy template to clipboard
 function copyTemplate() {
   const text = document.getElementById("template-text").value;
@@ -716,11 +621,10 @@ async function scanReddit() {
 
 // Update lead status
 
-async function updateStatus(leadId, status, options = {}) {
+async function updateStatus(leadId, status) {
   try {
     const lead = allLeads.find((l) => l.id === leadId);
     const previousStatus = lead ? lead.status || "new" : null;
-    const suppressCommentModal = options.suppressCommentModal || false;
     const response = await fetch(`/api/lead/${leadId}`, {
       method: "PUT",
       headers: {
@@ -749,14 +653,6 @@ async function updateStatus(leadId, status, options = {}) {
       filterLeads(currentFilter);
 
       showNotification(`✅ Lead marked as ${status}`);
-      if (
-        status === "contacted" &&
-        !suppressCommentModal &&
-        lead &&
-        !lead.comment_url
-      ) {
-        openCommentLinkModal(leadId);
-      }
       loadStats();
     }
   } catch (error) {
@@ -2171,7 +2067,7 @@ async function bulkUpdateStatus(status) {
     
     // Process all updates
     const promises = Array.from(selectedLeads).map(id =>
-      updateStatus(id, status, { suppressCommentModal: true })
+      updateStatus(id, status)
     );
     await Promise.all(promises);
     
