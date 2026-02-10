@@ -269,6 +269,7 @@ async function loadLeads() {
     }
 
     updateStatusCounts();
+    updateWeeklyGoalReport();
 
     // ✅ Default view = Today (after leads are loaded)
     filterLeads("today");
@@ -640,6 +641,9 @@ async function updateStatus(leadId, status) {
       }
 
       if (status === "contacted" && previousStatus !== "contacted") {
+        if (lead) {
+          lead.replied_at = new Date().toISOString();
+        }
         incrementDailyContactCount();
       }
       if (status === "ignored" && previousStatus !== "ignored") {
@@ -648,6 +652,7 @@ async function updateStatus(leadId, status) {
 
       // ✅ UPDATE: Refresh counts immediately
       updateStatusCounts();
+      updateWeeklyGoalReport();
 
       // ✅ FIX: Stay on current filter (today, hot, emergency, etc.)
       filterLeads(currentFilter);
@@ -775,6 +780,64 @@ function updateDailyGoalDisplay() {
       banner.style.display = "none";
     }
   }
+
+  updateWeeklyGoalReport();
+}
+
+function getWeekStartSunday(date) {
+  const result = new Date(date);
+  result.setHours(0, 0, 0, 0);
+  const day = result.getDay();
+  result.setDate(result.getDate() - day);
+  return result;
+}
+
+function toDateKeyLocal(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function updateWeeklyGoalReport() {
+  const weeklyReportEl = document.getElementById("simple-weekly-goal-report");
+  if (!weeklyReportEl) return;
+
+  const goal = Number(localStorage.getItem(DAILY_GOAL_KEY) || "10");
+  if (goal <= 0) {
+    weeklyReportEl.textContent = "0/7";
+    return;
+  }
+
+  const now = new Date();
+  const weekStart = getWeekStartSunday(now);
+  const validDays = new Set();
+
+  for (let offset = 0; offset < 7; offset += 1) {
+    const day = new Date(weekStart);
+    day.setDate(weekStart.getDate() + offset);
+    validDays.add(toDateKeyLocal(day));
+  }
+
+  const contactedByDate = {};
+  for (const lead of allLeads) {
+    if (!lead || !lead.replied_at) continue;
+    const repliedDate = new Date(lead.replied_at);
+    if (Number.isNaN(repliedDate.getTime())) continue;
+
+    const dateKey = toDateKeyLocal(repliedDate);
+    if (!validDays.has(dateKey)) continue;
+    contactedByDate[dateKey] = (contactedByDate[dateKey] || 0) + 1;
+  }
+
+  let reachedDays = 0;
+  for (const dayKey of validDays) {
+    if ((contactedByDate[dayKey] || 0) >= goal) {
+      reachedDays += 1;
+    }
+  }
+
+  weeklyReportEl.textContent = `${reachedDays}/7`;
 }
 
 function setupExitReminder() {
