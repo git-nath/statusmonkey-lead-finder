@@ -5,6 +5,7 @@ import json
 from datetime import datetime
 import os
 from notion_client import Client
+from psycopg2 import errors
 
 from db import (
     DBIntegrityError,
@@ -14,6 +15,7 @@ from db import (
 )
 
 app = Flask(__name__)
+COMMENT_TRACKING_COLUMNS_READY = False
 
 # Notion API Configuration
 NOTION_API_KEY = "ntn_f92115249684DSCjMeZGcN7j7JU6tPkWrNRskbOj9AQ6zP"
@@ -307,6 +309,17 @@ def update_or_delete_lead(lead_id):
         c.execute('UPDATE leads SET converted = ?, revenue = ? WHERE id = ?',
                  (converted, revenue, lead_id))
 
+    global COMMENT_TRACKING_COLUMNS_READY
+
+    if ('comment_url' in update or 'comment_snippet' in update) and not COMMENT_TRACKING_COLUMNS_READY:
+        try:
+            c.execute('ALTER TABLE leads ADD COLUMN IF NOT EXISTS comment_url TEXT')
+            c.execute('ALTER TABLE leads ADD COLUMN IF NOT EXISTS comment_snippet TEXT')
+            conn.commit()
+            COMMENT_TRACKING_COLUMNS_READY = True
+        except Exception:
+            conn.rollback()
+
     if 'comment_url' in update:
         c.execute('UPDATE leads SET comment_url = ? WHERE id = ?',
                   (update['comment_url'], lead_id))
@@ -315,9 +328,18 @@ def update_or_delete_lead(lead_id):
         c.execute('UPDATE leads SET comment_snippet = ? WHERE id = ?',
                   (update['comment_snippet'], lead_id))
     
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True})
+    try:
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    except errors.UndefinedColumn as e:
+        conn.rollback()
+        conn.close()
+        return jsonify({
+            'success': False,
+            'error': 'Comment tracking columns are not available yet. Retry in a moment.',
+            'details': str(e),
+        }), 503
 
 @app.route('/api/stats')
 def get_stats():
@@ -677,8 +699,15 @@ def init_db():
     """Initialize the database and ensure all tables and columns exist"""
     initialize_database()
 
-# Initialize database on startup
-init_db()
+def should_initialize_database_on_startup():
+    """Avoid expensive startup migrations in the reloader parent process."""
+    if not app.debug:
+        return True
+    return os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
+
+
+if should_initialize_database_on_startup():
+    init_db()
 
 @app.route('/api/notion/add', methods=['POST'])
 def add_to_notion():
