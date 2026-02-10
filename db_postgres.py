@@ -3,7 +3,6 @@ from datetime import datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
-from psycopg2 import errors
 
 
 class PostgresCursorWrapper:
@@ -87,27 +86,6 @@ def initialize_postgres_db(connection):
     for statement in statements:
         cursor.execute(statement)
 
-    connection.commit()
-
-    # These migrations are best-effort because hosted Postgres providers can
-    # enforce short statement timeouts or lock waits during startup.
-    try:
-        cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS comment_url TEXT")
-    except errors.QueryCanceled:
-        connection.rollback()
-        print(
-            "⚠️ Skipping migration for leads.comment_url due to statement timeout; "
-            "retry later when DB load is lower."
-        )
-
-    try:
-        cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS comment_snippet TEXT")
-    except errors.QueryCanceled:
-        connection.rollback()
-        print(
-            "⚠️ Skipping migration for leads.comment_snippet due to statement timeout; "
-            "retry later when DB load is lower."
-        )
     connection.commit()
 
     cursor.execute("SELECT COUNT(*) AS count FROM subreddits")
