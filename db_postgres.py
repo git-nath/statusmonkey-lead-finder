@@ -1,4 +1,5 @@
 import os
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -70,7 +71,23 @@ def get_postgres_connection():
         )
     import psycopg2
 
-    return psycopg2.connect(database_url)
+    last_error = None
+    for attempt in range(5):
+        try:
+            return psycopg2.connect(database_url)
+        except psycopg2.OperationalError as exc:
+            message = str(exc)
+            last_error = exc
+            if "MaxClientsInSessionMode" in message:
+                wait_s = min(1 + attempt, 5)
+                print(
+                    "⚠️ Postgres connection pool is full. Retrying in "
+                    f"{wait_s}s..."
+                )
+                time.sleep(wait_s)
+                continue
+            raise
+    raise last_error
 
 
 def wrap_connection(connection):
@@ -131,3 +148,40 @@ def initialize_postgres_db(connection):
         )
 
     connection.commit()
+
+
+def ensure_lead_comment_columns(cursor):
+    """Add comment columns if missing, without blocking startup on timeouts."""
+    existing = get_leads_comment_columns(cursor)
+    missing = {"comment_url", "comment_snippet"} - existing
+    if not missing:
+        return
+
+    try:
+        cursor.execute("SET LOCAL statement_timeout = '5s'")
+        if "comment_url" in missing:
+            cursor.execute("ALTER TABLE leads ADD COLUMN comment_url TEXT")
+        if "comment_snippet" in missing:
+            cursor.execute("ALTER TABLE leads ADD COLUMN comment_snippet TEXT")
+    except Exception as exc:
+        try:
+            import psycopg2
+
+            if isinstance(exc, psycopg2.errors.QueryCanceled):
+                print("⚠️ Skipping comment column migration due to timeout.")
+                return
+        except Exception:
+            pass
+        raise
+
+
+def get_leads_comment_columns(cursor):
+    cursor.execute(
+        """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'leads'
+          AND column_name IN ('comment_url', 'comment_snippet')
+        """
+    )
+    return {row["column_name"] for row in cursor.fetchall()}
