@@ -35,6 +35,7 @@ const LAST_OPENED_LEAD_TIMESTAMP_KEY = "statusmonkeyLastOpenedLeadAt";
 const OPEN_POST_HIGHLIGHT_CLASS = "highlight";
 const DAILY_GOAL_KEY = "statusmonkeyDailyContactGoal";
 const DAILY_CONTACT_KEY = "statusmonkeyDailyContactCount";
+const DAILY_CONTACT_HISTORY_KEY = "statusmonkeyDailyContactHistory";
 const DAILY_IGNORED_KEY = "statusmonkeyDailyIgnoredCount";
 const TOP10_PROMPT_KEY = "statusmonkeyTop10Prompt";
 const EXIT_REMINDER_DISMISSED_KEY = "statusmonkeyExitReminderDismissed";
@@ -269,6 +270,7 @@ async function loadLeads() {
     }
 
     updateStatusCounts();
+    updateWeeklyGoalReport();
 
     // ✅ Default view = Today (after leads are loaded)
     filterLeads("today");
@@ -640,6 +642,9 @@ async function updateStatus(leadId, status) {
       }
 
       if (status === "contacted" && previousStatus !== "contacted") {
+        if (lead) {
+          lead.replied_at = new Date().toISOString();
+        }
         incrementDailyContactCount();
       }
       if (status === "ignored" && previousStatus !== "ignored") {
@@ -648,6 +653,7 @@ async function updateStatus(leadId, status) {
 
       // ✅ UPDATE: Refresh counts immediately
       updateStatusCounts();
+      updateWeeklyGoalReport();
 
       // ✅ FIX: Stay on current filter (today, hot, emergency, etc.)
       filterLeads(currentFilter);
@@ -678,6 +684,7 @@ function setupDailyContactGoal() {
     updateDailyGoalDisplay();
   });
 
+  syncDailyContactHistoryFromCurrentState();
   updateDailyGoalDisplay();
 }
 
@@ -717,6 +724,35 @@ function getDailyIgnoredState() {
   }
 }
 
+function getDailyContactHistory() {
+  const raw = localStorage.getItem(DAILY_CONTACT_HISTORY_KEY);
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+    return parsed;
+  } catch (error) {
+    return {};
+  }
+}
+
+function setDailyContactHistory(history) {
+  localStorage.setItem(DAILY_CONTACT_HISTORY_KEY, JSON.stringify(history));
+}
+
+function syncDailyContactHistoryFromCurrentState() {
+  const state = getDailyContactState();
+  const history = getDailyContactHistory();
+  const current = Number(history[state.date] || 0);
+
+  if (state.count > current) {
+    history[state.date] = state.count;
+    setDailyContactHistory(history);
+  }
+}
+
 function setDailyContactState(state) {
   localStorage.setItem(DAILY_CONTACT_KEY, JSON.stringify(state));
 }
@@ -732,6 +768,7 @@ function incrementDailyContactCount() {
     count: state.count + 1,
   };
   setDailyContactState(nextState);
+  syncDailyContactHistoryFromCurrentState();
   updateDailyGoalDisplay();
 }
 
@@ -742,6 +779,7 @@ function incrementDailyIgnoredCount() {
     count: state.count + 1,
   };
   setDailyIgnoredState(nextState);
+  syncDailyContactHistoryFromCurrentState();
   updateDailyGoalDisplay();
 }
 
@@ -774,6 +812,85 @@ function updateDailyGoalDisplay() {
     } else {
       banner.style.display = "none";
     }
+  }
+
+  updateWeeklyGoalReport();
+}
+
+function getWeekStartSunday(date) {
+  const result = new Date(date);
+  result.setHours(0, 0, 0, 0);
+  const day = result.getDay();
+  result.setDate(result.getDate() - day);
+  return result;
+}
+
+function toDateKeyLocal(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function updateWeeklyGoalReport() {
+  const weeklyReportEl = document.getElementById("simple-weekly-goal-report");
+  const weeklyBreakdownEl = document.getElementById("simple-weekly-goal-breakdown");
+  const weeklyPercentEl = document.getElementById("simple-weekly-goal-percent");
+  const weeklyDayGridEl = document.getElementById("simple-weekly-day-grid");
+  if (!weeklyReportEl) return;
+
+  const goal = Number(localStorage.getItem(DAILY_GOAL_KEY) || "10");
+  const effectiveGoal = goal > 0 ? goal : 0;
+
+  const now = new Date();
+  const weekStart = getWeekStartSunday(now);
+  const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const contactHistory = getDailyContactHistory();
+
+  let reachedDays = 0;
+  const breakdownParts = [];
+  const dayCards = [];
+
+  for (let offset = 0; offset < 7; offset += 1) {
+    const day = new Date(weekStart);
+    day.setDate(weekStart.getDate() + offset);
+    const dayKey = toDateKeyLocal(day);
+    const contacted = Number(contactHistory[dayKey] || 0);
+
+    const achieved = effectiveGoal > 0 && contacted >= effectiveGoal;
+    if (achieved) {
+      reachedDays += 1;
+    }
+
+    const dayPercent = effectiveGoal > 0
+      ? Math.min(100, Math.round((contacted / effectiveGoal) * 100))
+      : 0;
+
+    breakdownParts.push(`${dayLabels[offset]} ${contacted}/${effectiveGoal}`);
+    dayCards.push(`
+      <article class="weekly-day-card ${achieved ? "is-hit" : "is-miss"}">
+        <div class="weekly-day-name">${dayLabels[offset]}</div>
+        <div class="weekly-day-score">${contacted}<span>/${effectiveGoal}</span></div>
+        <div class="weekly-day-track"><span style="width:${dayPercent}%"></span></div>
+        <div class="weekly-day-status">${achieved ? "Goal hit" : "Not yet"}</div>
+      </article>
+    `);
+  }
+
+  const percentAchieved = Math.round((reachedDays / 7) * 100);
+
+  if (weeklyDayGridEl) {
+    weeklyDayGridEl.innerHTML = dayCards.join("");
+  }
+
+  if (weeklyBreakdownEl) {
+    weeklyBreakdownEl.textContent = breakdownParts.join(" · ");
+  }
+
+  weeklyReportEl.textContent = `${reachedDays}/7`;
+
+  if (weeklyPercentEl) {
+    weeklyPercentEl.textContent = `${percentAchieved}%`;
   }
 }
 
