@@ -860,6 +860,7 @@ function updateWeeklyGoalReport() {
     const contacted = Number(contactHistory[dayKey] || 0);
 
     const achieved = effectiveGoal > 0 && contacted >= effectiveGoal;
+    const isToday = dayKey === getTodayKey();
     if (achieved) {
       reachedDays += 1;
     }
@@ -870,7 +871,7 @@ function updateWeeklyGoalReport() {
 
     breakdownParts.push(`${dayLabels[offset]} ${contacted}/${effectiveGoal}`);
     dayCards.push(`
-      <article class="weekly-day-card ${achieved ? "is-hit" : "is-miss"}"
+      <article class="weekly-day-card ${achieved ? "is-hit" : "is-miss"} ${isToday ? "is-today" : ""}"
         data-day-key="${dayKey}" data-day-label="${dayLabels[offset]}"
         onclick="showWeeklyDayDetails('${dayKey}', '${dayLabels[offset]}')">
         <div class="weekly-day-name">${dayLabels[offset]}</div>
@@ -1509,6 +1510,15 @@ function escapeHtml(text) {
 function filterByStatus(status) {
   currentStatusFilter = status;
 
+  // Status tabs should always render from the full dataset,
+  // not from a prior special view (Top 10 / Today / Hot).
+  currentFilter = "status";
+  isTop10CompactMode = false;
+  isAllCompactMode = false;
+  top10BatchIds.clear();
+  top10BatchIndices.clear();
+  updateTop10MarqueeMenu();
+
   // Update active tab styling
   document.querySelectorAll(".tab-btn").forEach((btn) => {
     btn.classList.remove("active");
@@ -1518,10 +1528,10 @@ function filterByStatus(status) {
     activeBtn.classList.add("active");
   }
 
-  // Re-render leads with new filter
+  // Re-render leads with selected status over full lead set
   displayLeads(allLeads);
-  
-  // Update controls visibility
+
+  // Ensure special controls are hidden while browsing status tabs
   checkHideControls(status);
 }
 // ============================================
