@@ -836,6 +836,7 @@ function updateWeeklyGoalReport() {
   const weeklyReportEl = document.getElementById("simple-weekly-goal-report");
   const weeklyBreakdownEl = document.getElementById("simple-weekly-goal-breakdown");
   const weeklyPercentEl = document.getElementById("simple-weekly-goal-percent");
+  const weeklyDayGridEl = document.getElementById("simple-weekly-day-grid");
   if (!weeklyReportEl) return;
 
   const goal = Number(localStorage.getItem(DAILY_GOAL_KEY) || "10");
@@ -848,6 +849,7 @@ function updateWeeklyGoalReport() {
 
   let reachedDays = 0;
   const breakdownParts = [];
+  const dayCards = [];
 
   for (let offset = 0; offset < 7; offset += 1) {
     const day = new Date(weekStart);
@@ -855,23 +857,40 @@ function updateWeeklyGoalReport() {
     const dayKey = toDateKeyLocal(day);
     const contacted = Number(contactHistory[dayKey] || 0);
 
-    if (effectiveGoal > 0 && contacted >= effectiveGoal) {
+    const achieved = effectiveGoal > 0 && contacted >= effectiveGoal;
+    if (achieved) {
       reachedDays += 1;
     }
 
+    const dayPercent = effectiveGoal > 0
+      ? Math.min(100, Math.round((contacted / effectiveGoal) * 100))
+      : 0;
+
     breakdownParts.push(`${dayLabels[offset]} ${contacted}/${effectiveGoal}`);
+    dayCards.push(`
+      <article class="weekly-day-card ${achieved ? "is-hit" : "is-miss"}">
+        <div class="weekly-day-name">${dayLabels[offset]}</div>
+        <div class="weekly-day-score">${contacted}<span>/${effectiveGoal}</span></div>
+        <div class="weekly-day-track"><span style="width:${dayPercent}%"></span></div>
+        <div class="weekly-day-status">${achieved ? "Goal hit" : "Not yet"}</div>
+      </article>
+    `);
   }
 
   const percentAchieved = Math.round((reachedDays / 7) * 100);
+
+  if (weeklyDayGridEl) {
+    weeklyDayGridEl.innerHTML = dayCards.join("");
+  }
 
   if (weeklyBreakdownEl) {
     weeklyBreakdownEl.textContent = breakdownParts.join(" · ");
   }
 
-  weeklyReportEl.textContent = `Goals achieved: ${reachedDays}/7`;
+  weeklyReportEl.textContent = `${reachedDays}/7`;
 
   if (weeklyPercentEl) {
-    weeklyPercentEl.textContent = `Goal-achievement rate: ${percentAchieved}%`;
+    weeklyPercentEl.textContent = `${percentAchieved}%`;
   }
 }
 
