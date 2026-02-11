@@ -87,12 +87,243 @@ body {
   color: #64748b;
 }
 
+.simple-weekly-report-card {
+  grid-column: 1 / -1;
+  padding: 24px;
+  border-radius: 18px;
+  border: 1px solid #313843;
+  background: radial-gradient(circle at 0% 0%, rgba(11, 95, 168, 0.22), transparent 42%), #171d24;
+  box-shadow: 0 10px 28px rgba(2, 6, 23, 0.4);
+}
+
+.weekly-analytics-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-end;
+  margin-bottom: 14px;
+}
+
+.weekly-kpi-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9fb0c2;
+  margin-bottom: 6px;
+}
+
+.simple-weekly-report-card #simple-weekly-goal-report {
+  font-size: clamp(2.2rem, 4vw, 4rem);
+  line-height: 1;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.simple-weekly-report-card #simple-weekly-goal-percent {
+  font-size: clamp(1.3rem, 2.5vw, 2rem);
+  line-height: 1.1;
+  font-weight: 700;
+  color: #3ddc97;
+  margin-top: 0;
+}
+
+.simple-weekly-day-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 12px;
+  margin: 12px 0 14px;
+}
+
+.weekly-day-card {
+  border: 1px solid #303847;
+  border-radius: 12px;
+  background: #10161d;
+  padding: 10px;
+}
+
+.weekly-day-card {
+  cursor: pointer;
+  transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.weekly-day-card:hover {
+  border-color: #4c89c7;
+  transform: translateY(-2px);
+}
+
+.weekly-day-card.is-selected {
+  border-color: #5ea7f0;
+  box-shadow: 0 0 0 1px rgba(94, 167, 240, 0.35);
+}
+
+.simple-day-detail-panel {
+  margin-top: 14px;
+  border: 1px solid #2f3946;
+  border-radius: 14px;
+  background: #0f141b;
+  padding: 12px;
+}
+
+.simple-day-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.simple-day-detail-header h3 {
+  font-size: 1rem;
+  color: #e6edf6;
+}
+
+#simple-day-detail-subtitle {
+  font-size: 0.82rem;
+  color: #92a0b0;
+}
+
+.simple-day-detail-list {
+  display: grid;
+  gap: 8px;
+}
+
+.simple-day-lead-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid #283241;
+  border-radius: 10px;
+  background: #0b1118;
+}
+
+.simple-day-lead-main {
+  min-width: 0;
+}
+
+.simple-day-lead-title {
+  font-size: 0.9rem;
+  color: #dde7f2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.simple-day-lead-meta {
+  margin-top: 3px;
+  font-size: 0.78rem;
+  color: #93a3b5;
+}
+
+.simple-day-open-link {
+  font-size: 0.8rem;
+  color: #79b9ff;
+  border: 1px solid #2e4f72;
+  border-radius: 8px;
+  padding: 6px 8px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.simple-day-open-link:hover {
+  border-color: #4f87c0;
+  color: #a6d2ff;
+}
+
+.simple-day-empty {
+  padding: 10px;
+  border: 1px dashed #3b4858;
+  border-radius: 10px;
+  color: #95a4b6;
+  font-size: 0.86rem;
+}
+
+.weekly-day-name {
+  font-size: 0.82rem;
+  color: #9aa7b5;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.weekly-day-score {
+  margin-top: 2px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #f3f4f6;
+}
+
+.weekly-day-score span {
+  font-size: 0.82rem;
+  color: #9aa7b5;
+  margin-left: 2px;
+}
+
+.weekly-day-track {
+  margin-top: 8px;
+  width: 100%;
+  height: 7px;
+  border-radius: 999px;
+  background: #1f2937;
+  overflow: hidden;
+}
+
+.weekly-day-track span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #0ea5e9, #22c55e);
+}
+
+.weekly-day-status {
+  margin-top: 7px;
+  font-size: 0.75rem;
+  color: #aab5c2;
+}
+
+.weekly-day-card.is-hit {
+  border-color: #2f7a57;
+  background: linear-gradient(180deg, rgba(34,197,94,0.11), rgba(16,22,29,1));
+}
+
+.weekly-day-card.is-hit .weekly-day-status {
+  color: #65d6a0;
+}
+
+.weekly-day-card.is-today {
+  border-color: #7dd3fc;
+  box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.35), 0 0 18px rgba(14, 165, 233, 0.25);
+  background: linear-gradient(180deg, rgba(14, 165, 233, 0.12), rgba(16,22,29,1));
+}
+
+.weekly-day-card.is-today .weekly-day-name::after {
+  content: " • TODAY";
+  color: #7dd3fc;
+  font-weight: 700;
+}
+
+body.simple-dashboard #today-btn.active {
+  box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.5), 0 0 14px rgba(14, 165, 233, 0.35);
+}
+
+.simple-weekly-goal-breakdown {
+  line-height: 1.6;
+  font-family: "Space Grotesk", sans-serif;
+  white-space: nowrap;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  color: #8ea0b3;
+}
+
 body.simple-dashboard {
   background: #1b1f22;
   color: #e6e6e6;
   font-family: "Space Grotesk", "Inter", "Segoe UI", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+body.simple-dashboard .container {
+  max-width: min(1900px, calc(100vw - 32px));
 }
 
 body.simple-dashboard .terminal-header h1,
@@ -147,6 +378,10 @@ body.simple-dashboard .simple-goal-card {
   grid-column: span 1;
 }
 
+body.simple-dashboard .simple-weekly-report-card {
+  grid-column: 1 / -1;
+}
+
 body.simple-dashboard .toggle-btn {
   border-color: #2d3339;
   color: #e6e6e6;
@@ -189,9 +424,29 @@ body.simple-dashboard .lead-card {
   color: #e5e7eb;
 }
 
+@media (max-width: 1100px) {
+  .simple-weekly-day-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 900px) {
   body.simple-dashboard .simple-stats-grid {
     grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+
+  .simple-weekly-day-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .weekly-analytics-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .simple-day-lead-row {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 
