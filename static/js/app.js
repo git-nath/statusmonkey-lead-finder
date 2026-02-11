@@ -372,6 +372,7 @@ function displayLeads(leads, options = {}) {
 // Create lead card HTML
 function createLeadCard(lead, index) {
   const priorityClass = `priority-${lead.priority}`;
+  const commentAction = "";
   const statusBadge =
     lead.status !== "new"
       ? `<span class="badge badge-${
