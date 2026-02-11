@@ -847,7 +847,6 @@ function updateWeeklyGoalReport() {
   const contactHistory = getDailyContactHistory();
 
   let reachedDays = 0;
-  let totalContacted = 0;
   const breakdownParts = [];
 
   for (let offset = 0; offset < 7; offset += 1) {
@@ -856,7 +855,6 @@ function updateWeeklyGoalReport() {
     const dayKey = toDateKeyLocal(day);
     const contacted = Number(contactHistory[dayKey] || 0);
 
-    totalContacted += contacted;
     if (effectiveGoal > 0 && contacted >= effectiveGoal) {
       reachedDays += 1;
     }
@@ -864,19 +862,16 @@ function updateWeeklyGoalReport() {
     breakdownParts.push(`${dayLabels[offset]} ${contacted}/${effectiveGoal}`);
   }
 
-  const weeklyTarget = effectiveGoal * 7;
-  const percentAchieved = weeklyTarget > 0
-    ? Math.min(100, Math.round((totalContacted / weeklyTarget) * 100))
-    : 0;
+  const percentAchieved = Math.round((reachedDays / 7) * 100);
 
   if (weeklyBreakdownEl) {
     weeklyBreakdownEl.textContent = breakdownParts.join(" · ");
   }
 
-  weeklyReportEl.textContent = `${reachedDays}/7 days`;
+  weeklyReportEl.textContent = `Goals achieved: ${reachedDays}/7`;
 
   if (weeklyPercentEl) {
-    weeklyPercentEl.textContent = `Total achieved: ${percentAchieved}% (${totalContacted}/${weeklyTarget || 0})`;
+    weeklyPercentEl.textContent = `Goal-achievement rate: ${percentAchieved}%`;
   }
 }
 
