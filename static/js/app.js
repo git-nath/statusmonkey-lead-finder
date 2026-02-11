@@ -19,6 +19,8 @@ let isAllCompactMode = false;
 // TASK: Top 10 Batch State
 let top10BatchIds = new Set();
 let top10BatchIndices = new Map(); // Maps ID -> #Rank (1-10)
+let selectedWeeklyDayKey = null;
+
 let marqueeSelectionState = {
   active: false,
   startX: 0,
@@ -868,7 +870,9 @@ function updateWeeklyGoalReport() {
 
     breakdownParts.push(`${dayLabels[offset]} ${contacted}/${effectiveGoal}`);
     dayCards.push(`
-      <article class="weekly-day-card ${achieved ? "is-hit" : "is-miss"}">
+      <article class="weekly-day-card ${achieved ? "is-hit" : "is-miss"}"
+        data-day-key="${dayKey}" data-day-label="${dayLabels[offset]}"
+        onclick="showWeeklyDayDetails('${dayKey}', '${dayLabels[offset]}')">
         <div class="weekly-day-name">${dayLabels[offset]}</div>
         <div class="weekly-day-score">${contacted}<span>/${effectiveGoal}</span></div>
         <div class="weekly-day-track"><span style="width:${dayPercent}%"></span></div>
@@ -883,6 +887,15 @@ function updateWeeklyGoalReport() {
     weeklyDayGridEl.innerHTML = dayCards.join("");
   }
 
+  if (selectedWeeklyDayKey) {
+    const selectedExists = dayCards.some((cardHtml) =>
+      cardHtml.includes(`data-day-key="${selectedWeeklyDayKey}"`)
+    );
+    if (selectedExists) {
+      showWeeklyDayDetails(selectedWeeklyDayKey);
+    }
+  }
+
   if (weeklyBreakdownEl) {
     weeklyBreakdownEl.textContent = breakdownParts.join(" · ");
   }
@@ -893,6 +906,64 @@ function updateWeeklyGoalReport() {
     weeklyPercentEl.textContent = `${percentAchieved}%`;
   }
 }
+
+
+function setWeeklyDayCardSelection(dayKey) {
+  document.querySelectorAll('.weekly-day-card').forEach((card) => {
+    card.classList.toggle('is-selected', card.dataset.dayKey === dayKey);
+  });
+}
+
+function showWeeklyDayDetails(dayKey, dayLabel = null) {
+  const detailPanel = document.getElementById('simple-day-detail-panel');
+  const detailTitle = document.getElementById('simple-day-detail-title');
+  const detailSubtitle = document.getElementById('simple-day-detail-subtitle');
+  const detailList = document.getElementById('simple-day-detail-list');
+
+  if (!detailPanel || !detailTitle || !detailSubtitle || !detailList) return;
+
+  selectedWeeklyDayKey = dayKey;
+  setWeeklyDayCardSelection(dayKey);
+
+  const labelFromCard = dayLabel || document.querySelector(`.weekly-day-card[data-day-key="${dayKey}"]`)?.dataset.dayLabel || 'Day';
+
+  const leadsForDay = allLeads
+    .filter((lead) => {
+      if (!lead || !lead.replied_at) return false;
+      const repliedDate = new Date(lead.replied_at);
+      if (Number.isNaN(repliedDate.getTime())) return false;
+      return toDateKeyLocal(repliedDate) === dayKey;
+    })
+    .sort((a, b) => (b.comments || 0) - (a.comments || 0));
+
+  detailPanel.style.display = 'block';
+  detailTitle.textContent = `${labelFromCard} contacted leads`;
+  detailSubtitle.textContent = `${leadsForDay.length} lead${leadsForDay.length === 1 ? '' : 's'} · compact list`;
+
+  if (leadsForDay.length === 0) {
+    detailList.innerHTML = '<div class="simple-day-empty">No contacted leads logged for this day yet.</div>';
+    return;
+  }
+
+  detailList.innerHTML = leadsForDay
+    .map((lead) => {
+      const title = escapeHtml(lead.title || '(Untitled post)');
+      const subreddit = escapeHtml(lead.subreddit || 'unknown');
+      const comments = Number(lead.comments || 0);
+      const url = lead.url || '#';
+      return `
+        <article class="simple-day-lead-row">
+          <div class="simple-day-lead-main">
+            <div class="simple-day-lead-title" title="${title}">${title}</div>
+            <div class="simple-day-lead-meta">r/${subreddit} · 💬 ${comments} comments</div>
+          </div>
+          <a class="simple-day-open-link" href="${url}" target="_blank" rel="noopener noreferrer">Open post ↗</a>
+        </article>
+      `;
+    })
+    .join('');
+}
+
 
 function setupExitReminder() {
   // Exit reminder disabled for centralized database usage.
