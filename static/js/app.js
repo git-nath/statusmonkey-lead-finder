@@ -269,6 +269,7 @@ async function loadLeads() {
     }
 
     updateStatusCounts();
+    updateWeeklyGoalReport();
 
     // ✅ Default view = Today (after leads are loaded)
     filterLeads("today");
@@ -640,6 +641,9 @@ async function updateStatus(leadId, status) {
       }
 
       if (status === "contacted" && previousStatus !== "contacted") {
+        if (lead) {
+          lead.replied_at = new Date().toISOString();
+        }
         incrementDailyContactCount();
       }
       if (status === "ignored" && previousStatus !== "ignored") {
@@ -648,6 +652,7 @@ async function updateStatus(leadId, status) {
 
       // ✅ UPDATE: Refresh counts immediately
       updateStatusCounts();
+      updateWeeklyGoalReport();
 
       // ✅ FIX: Stay on current filter (today, hot, emergency, etc.)
       filterLeads(currentFilter);
@@ -774,6 +779,83 @@ function updateDailyGoalDisplay() {
     } else {
       banner.style.display = "none";
     }
+  }
+
+  updateWeeklyGoalReport();
+}
+
+function getWeekStartSunday(date) {
+  const result = new Date(date);
+  result.setHours(0, 0, 0, 0);
+  const day = result.getDay();
+  result.setDate(result.getDate() - day);
+  return result;
+}
+
+function toDateKeyLocal(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function updateWeeklyGoalReport() {
+  const weeklyReportEl = document.getElementById("simple-weekly-goal-report");
+  const weeklyBreakdownEl = document.getElementById("simple-weekly-goal-breakdown");
+  const weeklyPercentEl = document.getElementById("simple-weekly-goal-percent");
+  if (!weeklyReportEl) return;
+
+  const goal = Number(localStorage.getItem(DAILY_GOAL_KEY) || "10");
+  const effectiveGoal = goal > 0 ? goal : 0;
+
+  const now = new Date();
+  const weekStart = getWeekStartSunday(now);
+  const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const weekDays = [];
+
+  for (let offset = 0; offset < 7; offset += 1) {
+    const day = new Date(weekStart);
+    day.setDate(weekStart.getDate() + offset);
+    weekDays.push({
+      label: dayLabels[offset],
+      key: toDateKeyLocal(day),
+    });
+  }
+
+  const contactedByDate = {};
+  for (const lead of allLeads) {
+    if (!lead || !lead.replied_at) continue;
+    const repliedDate = new Date(lead.replied_at);
+    if (Number.isNaN(repliedDate.getTime())) continue;
+
+    const dateKey = toDateKeyLocal(repliedDate);
+    contactedByDate[dateKey] = (contactedByDate[dateKey] || 0) + 1;
+  }
+
+  let reachedDays = 0;
+  let totalContacted = 0;
+  const breakdownParts = weekDays.map((day) => {
+    const contacted = contactedByDate[day.key] || 0;
+    totalContacted += contacted;
+
+    if (effectiveGoal > 0 && contacted >= effectiveGoal) {
+      reachedDays += 1;
+    }
+
+    return `${day.label} ${contacted}/${effectiveGoal}`;
+  });
+
+  const weeklyTarget = effectiveGoal * 7;
+  const percentAchieved = weeklyTarget > 0 ? Math.min(100, Math.round((totalContacted / weeklyTarget) * 100)) : 0;
+
+  if (weeklyBreakdownEl) {
+    weeklyBreakdownEl.textContent = breakdownParts.join(" · ");
+  }
+
+  weeklyReportEl.textContent = `${reachedDays}/7 days`;
+
+  if (weeklyPercentEl) {
+    weeklyPercentEl.textContent = `Total achieved: ${percentAchieved}% (${totalContacted}/${weeklyTarget || 0})`;
   }
 }
 
