@@ -19,6 +19,8 @@ let isAllCompactMode = false;
 // TASK: Top 10 Batch State
 let top10BatchIds = new Set();
 let top10BatchIndices = new Map(); // Maps ID -> #Rank (1-10)
+let selectedWeeklyDayKey = null;
+
 let marqueeSelectionState = {
   active: false,
   startX: 0,
@@ -35,6 +37,7 @@ const LAST_OPENED_LEAD_TIMESTAMP_KEY = "statusmonkeyLastOpenedLeadAt";
 const OPEN_POST_HIGHLIGHT_CLASS = "highlight";
 const DAILY_GOAL_KEY = "statusmonkeyDailyContactGoal";
 const DAILY_CONTACT_KEY = "statusmonkeyDailyContactCount";
+const DAILY_CONTACT_HISTORY_KEY = "statusmonkeyDailyContactHistory";
 const DAILY_IGNORED_KEY = "statusmonkeyDailyIgnoredCount";
 const TOP10_PROMPT_KEY = "statusmonkeyTop10Prompt";
 const EXIT_REMINDER_DISMISSED_KEY = "statusmonkeyExitReminderDismissed";
@@ -269,6 +272,7 @@ async function loadLeads() {
     }
 
     updateStatusCounts();
+    updateWeeklyGoalReport();
 
     // ✅ Default view = Today (after leads are loaded)
     filterLeads("today");
@@ -368,6 +372,7 @@ function displayLeads(leads, options = {}) {
 // Create lead card HTML
 function createLeadCard(lead, index) {
   const priorityClass = `priority-${lead.priority}`;
+  const commentAction = "";
   const statusBadge =
     lead.status !== "new"
       ? `<span class="badge badge-${
@@ -640,6 +645,9 @@ async function updateStatus(leadId, status) {
       }
 
       if (status === "contacted" && previousStatus !== "contacted") {
+        if (lead) {
+          lead.replied_at = new Date().toISOString();
+        }
         incrementDailyContactCount();
       }
       if (status === "ignored" && previousStatus !== "ignored") {
@@ -648,6 +656,7 @@ async function updateStatus(leadId, status) {
 
       // ✅ UPDATE: Refresh counts immediately
       updateStatusCounts();
+      updateWeeklyGoalReport();
 
       // ✅ FIX: Stay on current filter (today, hot, emergency, etc.)
       filterLeads(currentFilter);
@@ -678,6 +687,7 @@ function setupDailyContactGoal() {
     updateDailyGoalDisplay();
   });
 
+  syncDailyContactHistoryFromCurrentState();
   updateDailyGoalDisplay();
 }
 
@@ -717,6 +727,35 @@ function getDailyIgnoredState() {
   }
 }
 
+function getDailyContactHistory() {
+  const raw = localStorage.getItem(DAILY_CONTACT_HISTORY_KEY);
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+    return parsed;
+  } catch (error) {
+    return {};
+  }
+}
+
+function setDailyContactHistory(history) {
+  localStorage.setItem(DAILY_CONTACT_HISTORY_KEY, JSON.stringify(history));
+}
+
+function syncDailyContactHistoryFromCurrentState() {
+  const state = getDailyContactState();
+  const history = getDailyContactHistory();
+  const current = Number(history[state.date] || 0);
+
+  if (state.count > current) {
+    history[state.date] = state.count;
+    setDailyContactHistory(history);
+  }
+}
+
 function setDailyContactState(state) {
   localStorage.setItem(DAILY_CONTACT_KEY, JSON.stringify(state));
 }
@@ -732,6 +771,7 @@ function incrementDailyContactCount() {
     count: state.count + 1,
   };
   setDailyContactState(nextState);
+  syncDailyContactHistoryFromCurrentState();
   updateDailyGoalDisplay();
 }
 
@@ -742,6 +782,7 @@ function incrementDailyIgnoredCount() {
     count: state.count + 1,
   };
   setDailyIgnoredState(nextState);
+  syncDailyContactHistoryFromCurrentState();
   updateDailyGoalDisplay();
 }
 
@@ -775,7 +816,156 @@ function updateDailyGoalDisplay() {
       banner.style.display = "none";
     }
   }
+
+  updateWeeklyGoalReport();
 }
+
+function getWeekStartSunday(date) {
+  const result = new Date(date);
+  result.setHours(0, 0, 0, 0);
+  const day = result.getDay();
+  result.setDate(result.getDate() - day);
+  return result;
+}
+
+function toDateKeyLocal(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function updateWeeklyGoalReport() {
+  const weeklyReportEl = document.getElementById("simple-weekly-goal-report");
+  const weeklyBreakdownEl = document.getElementById("simple-weekly-goal-breakdown");
+  const weeklyPercentEl = document.getElementById("simple-weekly-goal-percent");
+  const weeklyDayGridEl = document.getElementById("simple-weekly-day-grid");
+  if (!weeklyReportEl) return;
+
+  const goal = Number(localStorage.getItem(DAILY_GOAL_KEY) || "10");
+  const effectiveGoal = goal > 0 ? goal : 0;
+
+  const now = new Date();
+  const weekStart = getWeekStartSunday(now);
+  const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const contactHistory = getDailyContactHistory();
+
+  let reachedDays = 0;
+  const breakdownParts = [];
+  const dayCards = [];
+
+  for (let offset = 0; offset < 7; offset += 1) {
+    const day = new Date(weekStart);
+    day.setDate(weekStart.getDate() + offset);
+    const dayKey = toDateKeyLocal(day);
+    const contacted = Number(contactHistory[dayKey] || 0);
+
+    const achieved = effectiveGoal > 0 && contacted >= effectiveGoal;
+    const isToday = dayKey === getTodayKey();
+    if (achieved) {
+      reachedDays += 1;
+    }
+
+    const dayPercent = effectiveGoal > 0
+      ? Math.min(100, Math.round((contacted / effectiveGoal) * 100))
+      : 0;
+
+    breakdownParts.push(`${dayLabels[offset]} ${contacted}/${effectiveGoal}`);
+    dayCards.push(`
+      <article class="weekly-day-card ${achieved ? "is-hit" : "is-miss"} ${isToday ? "is-today" : ""}"
+        data-day-key="${dayKey}" data-day-label="${dayLabels[offset]}"
+        onclick="showWeeklyDayDetails('${dayKey}', '${dayLabels[offset]}')">
+        <div class="weekly-day-name">${dayLabels[offset]}</div>
+        <div class="weekly-day-score">${contacted}<span>/${effectiveGoal}</span></div>
+        <div class="weekly-day-track"><span style="width:${dayPercent}%"></span></div>
+        <div class="weekly-day-status">${achieved ? "Goal hit" : "Not yet"}</div>
+      </article>
+    `);
+  }
+
+  const percentAchieved = Math.round((reachedDays / 7) * 100);
+
+  if (weeklyDayGridEl) {
+    weeklyDayGridEl.innerHTML = dayCards.join("");
+  }
+
+  if (selectedWeeklyDayKey) {
+    const selectedExists = dayCards.some((cardHtml) =>
+      cardHtml.includes(`data-day-key="${selectedWeeklyDayKey}"`)
+    );
+    if (selectedExists) {
+      showWeeklyDayDetails(selectedWeeklyDayKey);
+    }
+  }
+
+  if (weeklyBreakdownEl) {
+    weeklyBreakdownEl.textContent = breakdownParts.join(" · ");
+  }
+
+  weeklyReportEl.textContent = `${reachedDays}/7`;
+
+  if (weeklyPercentEl) {
+    weeklyPercentEl.textContent = `${percentAchieved}%`;
+  }
+}
+
+
+function setWeeklyDayCardSelection(dayKey) {
+  document.querySelectorAll('.weekly-day-card').forEach((card) => {
+    card.classList.toggle('is-selected', card.dataset.dayKey === dayKey);
+  });
+}
+
+function showWeeklyDayDetails(dayKey, dayLabel = null) {
+  const detailPanel = document.getElementById('simple-day-detail-panel');
+  const detailTitle = document.getElementById('simple-day-detail-title');
+  const detailSubtitle = document.getElementById('simple-day-detail-subtitle');
+  const detailList = document.getElementById('simple-day-detail-list');
+
+  if (!detailPanel || !detailTitle || !detailSubtitle || !detailList) return;
+
+  selectedWeeklyDayKey = dayKey;
+  setWeeklyDayCardSelection(dayKey);
+
+  const labelFromCard = dayLabel || document.querySelector(`.weekly-day-card[data-day-key="${dayKey}"]`)?.dataset.dayLabel || 'Day';
+
+  const leadsForDay = allLeads
+    .filter((lead) => {
+      if (!lead || !lead.replied_at) return false;
+      const repliedDate = new Date(lead.replied_at);
+      if (Number.isNaN(repliedDate.getTime())) return false;
+      return toDateKeyLocal(repliedDate) === dayKey;
+    })
+    .sort((a, b) => (b.comments || 0) - (a.comments || 0));
+
+  detailPanel.style.display = 'block';
+  detailTitle.textContent = `${labelFromCard} contacted leads`;
+  detailSubtitle.textContent = `${leadsForDay.length} lead${leadsForDay.length === 1 ? '' : 's'} · compact list`;
+
+  if (leadsForDay.length === 0) {
+    detailList.innerHTML = '<div class="simple-day-empty">No contacted leads logged for this day yet.</div>';
+    return;
+  }
+
+  detailList.innerHTML = leadsForDay
+    .map((lead) => {
+      const title = escapeHtml(lead.title || '(Untitled post)');
+      const subreddit = escapeHtml(lead.subreddit || 'unknown');
+      const comments = Number(lead.comments || 0);
+      const url = lead.url || '#';
+      return `
+        <article class="simple-day-lead-row">
+          <div class="simple-day-lead-main">
+            <div class="simple-day-lead-title" title="${title}">${title}</div>
+            <div class="simple-day-lead-meta">r/${subreddit} · 💬 ${comments} comments</div>
+          </div>
+          <a class="simple-day-open-link" href="${url}" target="_blank" rel="noopener noreferrer">Open post ↗</a>
+        </article>
+      `;
+    })
+    .join('');
+}
+
 
 function setupExitReminder() {
   // Exit reminder disabled for centralized database usage.
@@ -1321,6 +1511,15 @@ function escapeHtml(text) {
 function filterByStatus(status) {
   currentStatusFilter = status;
 
+  // Status tabs should always render from the full dataset,
+  // not from a prior special view (Top 10 / Today / Hot).
+  currentFilter = "status";
+  isTop10CompactMode = false;
+  isAllCompactMode = false;
+  top10BatchIds.clear();
+  top10BatchIndices.clear();
+  updateTop10MarqueeMenu();
+
   // Update active tab styling
   document.querySelectorAll(".tab-btn").forEach((btn) => {
     btn.classList.remove("active");
@@ -1330,10 +1529,10 @@ function filterByStatus(status) {
     activeBtn.classList.add("active");
   }
 
-  // Re-render leads with new filter
+  // Re-render leads with selected status over full lead set
   displayLeads(allLeads);
-  
-  // Update controls visibility
+
+  // Ensure special controls are hidden while browsing status tabs
   checkHideControls(status);
 }
 // ============================================
