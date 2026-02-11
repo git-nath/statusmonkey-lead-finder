@@ -87,6 +87,18 @@ body {
   color: #64748b;
 }
 
+.simple-weekly-report-card {
+  grid-column: 1 / -1;
+}
+
+.simple-weekly-goal-breakdown {
+  line-height: 1.6;
+  font-family: "Space Grotesk", sans-serif;
+  white-space: nowrap;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
 body.simple-dashboard {
   background: #1b1f22;
   color: #e6e6e6;
@@ -145,6 +157,10 @@ body.simple-dashboard .simple-goal-note {
 
 body.simple-dashboard .simple-goal-card {
   grid-column: span 1;
+}
+
+body.simple-dashboard .simple-weekly-report-card {
+  grid-column: 1 / -1;
 }
 
 body.simple-dashboard .toggle-btn {

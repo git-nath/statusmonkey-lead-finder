@@ -35,6 +35,7 @@ const LAST_OPENED_LEAD_TIMESTAMP_KEY = "statusmonkeyLastOpenedLeadAt";
 const OPEN_POST_HIGHLIGHT_CLASS = "highlight";
 const DAILY_GOAL_KEY = "statusmonkeyDailyContactGoal";
 const DAILY_CONTACT_KEY = "statusmonkeyDailyContactCount";
+const DAILY_CONTACT_HISTORY_KEY = "statusmonkeyDailyContactHistory";
 const DAILY_IGNORED_KEY = "statusmonkeyDailyIgnoredCount";
 const TOP10_PROMPT_KEY = "statusmonkeyTop10Prompt";
 const EXIT_REMINDER_DISMISSED_KEY = "statusmonkeyExitReminderDismissed";
@@ -683,6 +684,7 @@ function setupDailyContactGoal() {
     updateDailyGoalDisplay();
   });
 
+  syncDailyContactHistoryFromCurrentState();
   updateDailyGoalDisplay();
 }
 
@@ -722,6 +724,35 @@ function getDailyIgnoredState() {
   }
 }
 
+function getDailyContactHistory() {
+  const raw = localStorage.getItem(DAILY_CONTACT_HISTORY_KEY);
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+    return parsed;
+  } catch (error) {
+    return {};
+  }
+}
+
+function setDailyContactHistory(history) {
+  localStorage.setItem(DAILY_CONTACT_HISTORY_KEY, JSON.stringify(history));
+}
+
+function syncDailyContactHistoryFromCurrentState() {
+  const state = getDailyContactState();
+  const history = getDailyContactHistory();
+  const current = Number(history[state.date] || 0);
+
+  if (state.count > current) {
+    history[state.date] = state.count;
+    setDailyContactHistory(history);
+  }
+}
+
 function setDailyContactState(state) {
   localStorage.setItem(DAILY_CONTACT_KEY, JSON.stringify(state));
 }
@@ -737,6 +768,7 @@ function incrementDailyContactCount() {
     count: state.count + 1,
   };
   setDailyContactState(nextState);
+  syncDailyContactHistoryFromCurrentState();
   updateDailyGoalDisplay();
 }
 
@@ -747,6 +779,7 @@ function incrementDailyIgnoredCount() {
     count: state.count + 1,
   };
   setDailyIgnoredState(nextState);
+  syncDailyContactHistoryFromCurrentState();
   updateDailyGoalDisplay();
 }
 
@@ -811,42 +844,30 @@ function updateWeeklyGoalReport() {
   const now = new Date();
   const weekStart = getWeekStartSunday(now);
   const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const weekDays = [];
+  const contactHistory = getDailyContactHistory();
+
+  let reachedDays = 0;
+  let totalContacted = 0;
+  const breakdownParts = [];
 
   for (let offset = 0; offset < 7; offset += 1) {
     const day = new Date(weekStart);
     day.setDate(weekStart.getDate() + offset);
-    weekDays.push({
-      label: dayLabels[offset],
-      key: toDateKeyLocal(day),
-    });
-  }
+    const dayKey = toDateKeyLocal(day);
+    const contacted = Number(contactHistory[dayKey] || 0);
 
-  const contactedByDate = {};
-  for (const lead of allLeads) {
-    if (!lead || !lead.replied_at) continue;
-    const repliedDate = new Date(lead.replied_at);
-    if (Number.isNaN(repliedDate.getTime())) continue;
-
-    const dateKey = toDateKeyLocal(repliedDate);
-    contactedByDate[dateKey] = (contactedByDate[dateKey] || 0) + 1;
-  }
-
-  let reachedDays = 0;
-  let totalContacted = 0;
-  const breakdownParts = weekDays.map((day) => {
-    const contacted = contactedByDate[day.key] || 0;
     totalContacted += contacted;
-
     if (effectiveGoal > 0 && contacted >= effectiveGoal) {
       reachedDays += 1;
     }
 
-    return `${day.label} ${contacted}/${effectiveGoal}`;
-  });
+    breakdownParts.push(`${dayLabels[offset]} ${contacted}/${effectiveGoal}`);
+  }
 
   const weeklyTarget = effectiveGoal * 7;
-  const percentAchieved = weeklyTarget > 0 ? Math.min(100, Math.round((totalContacted / weeklyTarget) * 100)) : 0;
+  const percentAchieved = weeklyTarget > 0
+    ? Math.min(100, Math.round((totalContacted / weeklyTarget) * 100))
+    : 0;
 
   if (weeklyBreakdownEl) {
     weeklyBreakdownEl.textContent = breakdownParts.join(" · ");
