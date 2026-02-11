@@ -801,22 +801,25 @@ function toDateKeyLocal(date) {
 
 function updateWeeklyGoalReport() {
   const weeklyReportEl = document.getElementById("simple-weekly-goal-report");
+  const weeklyBreakdownEl = document.getElementById("simple-weekly-goal-breakdown");
+  const weeklyPercentEl = document.getElementById("simple-weekly-goal-percent");
   if (!weeklyReportEl) return;
 
   const goal = Number(localStorage.getItem(DAILY_GOAL_KEY) || "10");
-  if (goal <= 0) {
-    weeklyReportEl.textContent = "0/7";
-    return;
-  }
+  const effectiveGoal = goal > 0 ? goal : 0;
 
   const now = new Date();
   const weekStart = getWeekStartSunday(now);
-  const validDays = new Set();
+  const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const weekDays = [];
 
   for (let offset = 0; offset < 7; offset += 1) {
     const day = new Date(weekStart);
     day.setDate(weekStart.getDate() + offset);
-    validDays.add(toDateKeyLocal(day));
+    weekDays.push({
+      label: dayLabels[offset],
+      key: toDateKeyLocal(day),
+    });
   }
 
   const contactedByDate = {};
@@ -826,18 +829,34 @@ function updateWeeklyGoalReport() {
     if (Number.isNaN(repliedDate.getTime())) continue;
 
     const dateKey = toDateKeyLocal(repliedDate);
-    if (!validDays.has(dateKey)) continue;
     contactedByDate[dateKey] = (contactedByDate[dateKey] || 0) + 1;
   }
 
   let reachedDays = 0;
-  for (const dayKey of validDays) {
-    if ((contactedByDate[dayKey] || 0) >= goal) {
+  let totalContacted = 0;
+  const breakdownParts = weekDays.map((day) => {
+    const contacted = contactedByDate[day.key] || 0;
+    totalContacted += contacted;
+
+    if (effectiveGoal > 0 && contacted >= effectiveGoal) {
       reachedDays += 1;
     }
+
+    return `${day.label} ${contacted}/${effectiveGoal}`;
+  });
+
+  const weeklyTarget = effectiveGoal * 7;
+  const percentAchieved = weeklyTarget > 0 ? Math.min(100, Math.round((totalContacted / weeklyTarget) * 100)) : 0;
+
+  if (weeklyBreakdownEl) {
+    weeklyBreakdownEl.textContent = breakdownParts.join(" · ");
   }
 
-  weeklyReportEl.textContent = `${reachedDays}/7`;
+  weeklyReportEl.textContent = `${reachedDays}/7 days`;
+
+  if (weeklyPercentEl) {
+    weeklyPercentEl.textContent = `Total achieved: ${percentAchieved}% (${totalContacted}/${weeklyTarget || 0})`;
+  }
 }
 
 function setupExitReminder() {
