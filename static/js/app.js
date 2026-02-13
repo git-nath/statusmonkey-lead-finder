@@ -692,7 +692,7 @@ function setupDailyContactGoal() {
 }
 
 function getTodayKey() {
-  return new Date().toISOString().split("T")[0];
+  return toDateKeyLocal(new Date());
 }
 
 function getDailyContactState() {
@@ -849,6 +849,16 @@ function updateWeeklyGoalReport() {
   const weekStart = getWeekStartSunday(now);
   const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const contactHistory = getDailyContactHistory();
+  const leadCountsByDay = allLeads.reduce((acc, lead) => {
+    if (!lead || !lead.replied_at) return acc;
+
+    const repliedDate = new Date(lead.replied_at);
+    if (Number.isNaN(repliedDate.getTime())) return acc;
+
+    const repliedDayKey = toDateKeyLocal(repliedDate);
+    acc[repliedDayKey] = (acc[repliedDayKey] || 0) + 1;
+    return acc;
+  }, {});
 
   let reachedDays = 0;
   const breakdownParts = [];
@@ -858,7 +868,9 @@ function updateWeeklyGoalReport() {
     const day = new Date(weekStart);
     day.setDate(weekStart.getDate() + offset);
     const dayKey = toDateKeyLocal(day);
-    const contacted = Number(contactHistory[dayKey] || 0);
+    const historyCount = Number(contactHistory[dayKey] || 0);
+    const leadCount = Number(leadCountsByDay[dayKey] || 0);
+    const contacted = Math.max(historyCount, leadCount);
 
     const achieved = effectiveGoal > 0 && contacted >= effectiveGoal;
     const isToday = dayKey === getTodayKey();
