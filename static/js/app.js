@@ -860,7 +860,7 @@ function updateWeeklyGoalReport() {
     return acc;
   }, {});
 
-  let reachedDays = 0;
+  let weeklyTotalContacts = 0;
   const breakdownParts = [];
   const dayCards = [];
 
@@ -874,9 +874,7 @@ function updateWeeklyGoalReport() {
 
     const achieved = effectiveGoal > 0 && contacted >= effectiveGoal;
     const isToday = dayKey === getTodayKey();
-    if (achieved) {
-      reachedDays += 1;
-    }
+    weeklyTotalContacts += contacted;
 
     const dayPercent = effectiveGoal > 0
       ? Math.min(100, Math.round((contacted / effectiveGoal) * 100))
@@ -895,7 +893,10 @@ function updateWeeklyGoalReport() {
     `);
   }
 
-  const percentAchieved = Math.round((reachedDays / 7) * 100);
+  const weeklyTarget = effectiveGoal * 7;
+  const percentAchieved = weeklyTarget > 0
+    ? Math.round((weeklyTotalContacts / weeklyTarget) * 100)
+    : 0;
 
   if (weeklyDayGridEl) {
     weeklyDayGridEl.innerHTML = dayCards.join("");
@@ -914,7 +915,7 @@ function updateWeeklyGoalReport() {
     weeklyBreakdownEl.textContent = breakdownParts.join(" · ");
   }
 
-  weeklyReportEl.textContent = `${reachedDays}/7`;
+  weeklyReportEl.textContent = `${weeklyTotalContacts}/${weeklyTarget}`;
 
   if (weeklyPercentEl) {
     weeklyPercentEl.textContent = `${percentAchieved}%`;
