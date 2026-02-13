@@ -14,10 +14,19 @@ body {
 }
 
 .dashboard-toggle {
+  position: sticky;
+  top: 12px;
+  z-index: 980;
   display: flex;
   gap: 12px;
   justify-content: flex-end;
-  margin: 10px 0 18px;
+  width: fit-content;
+  margin: 10px 0 18px auto;
+  padding: 8px;
+  border: 1px solid #2d3339;
+  border-radius: 999px;
+  background: rgba(13, 17, 23, 0.88);
+  backdrop-filter: blur(4px);
 }
 
 .toggle-btn {
