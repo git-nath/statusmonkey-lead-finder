@@ -16,6 +16,16 @@ from db import (
 
 app = Flask(__name__)
 
+UNSPLASH_ACCESS_KEY = os.getenv("UNSPLASH_ACCESS_KEY")
+UNSPLASH_BACKGROUND_TOPICS = [
+    "nature",
+    "minimal",
+    "mountains",
+    "sunrise",
+    "landscape",
+    "calm",
+]
+
 
 @app.teardown_appcontext
 def close_connection(exception=None):
@@ -255,6 +265,48 @@ def index():
 def admin_page():
     """Admin dashboard"""
     return render_template('admin.html')
+
+
+@app.route('/api/background-image')
+def get_background_image():
+    """Return a curated Unsplash image for dashboard wallpaper."""
+    if not UNSPLASH_ACCESS_KEY:
+        return jsonify({
+            'error': 'Unsplash API key is not configured. Set UNSPLASH_ACCESS_KEY.'
+        }), 503
+
+    endpoint = 'https://api.unsplash.com/photos/random'
+    params = {
+        'query': ','.join(UNSPLASH_BACKGROUND_TOPICS),
+        'orientation': 'landscape',
+        'content_filter': 'high',
+        'count': 1,
+    }
+    headers = {
+        'Authorization': f'Client-ID {UNSPLASH_ACCESS_KEY}'
+    }
+
+    try:
+        response = requests.get(endpoint, params=params, headers=headers, timeout=10)
+        response.raise_for_status()
+        payload = response.json()
+        photo = payload[0] if isinstance(payload, list) else payload
+
+        photographer_name = photo.get('user', {}).get('name', 'Unknown photographer')
+        photographer_link = photo.get('user', {}).get('links', {}).get('html', 'https://unsplash.com')
+        unsplash_link = (photo.get('links', {}) or {}).get('html', 'https://unsplash.com')
+
+        return jsonify({
+            'image_url': photo.get('urls', {}).get('full') or photo.get('urls', {}).get('regular'),
+            'image_url_small': photo.get('urls', {}).get('regular') or photo.get('urls', {}).get('small'),
+            'alt_description': photo.get('alt_description') or 'Scenic workspace wallpaper',
+            'photographer_name': photographer_name,
+            'photographer_link': f"{photographer_link}?utm_source=statusmonkey&utm_medium=referral",
+            'unsplash_link': f"{unsplash_link}?utm_source=statusmonkey&utm_medium=referral",
+            'fetched_at': datetime.utcnow().isoformat(),
+        })
+    except requests.RequestException as exc:
+        return jsonify({'error': f'Failed to fetch Unsplash image: {exc}'}), 502
 
 @app.route('/api/leads')
 def get_leads():
