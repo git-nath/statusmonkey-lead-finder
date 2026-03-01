@@ -43,6 +43,12 @@ const TOP10_PROMPT_KEY = "statusmonkeyTop10Prompt";
 const EXIT_REMINDER_DISMISSED_KEY = "statusmonkeyExitReminderDismissed";
 const DASHBOARD_VIEW_KEY = "statusmonkeyDashboardView";
 
+const WALLPAPER_CACHE_KEY = "statusmonkeyDailyWallpaper";
+const WALLPAPER_CACHE_DATE_KEY = "statusmonkeyDailyWallpaperDate";
+const WALLPAPER_API_ENDPOINT = "/api/background-image";
+const WALLPAPER_PRELOAD_CLASS = "wallpaper-preload";
+
+
 function getStoredItems(key, fallback) {
   const raw = localStorage.getItem(key);
   if (!raw) {
@@ -67,6 +73,81 @@ function createLocalId(prefix) {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 }
 
+function getTodayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function applyWallpaper(payload) {
+  if (!payload || !(payload.image_url || payload.image_url_small)) {
+    return;
+  }
+
+  const wallpaper = document.getElementById("wallpaper");
+  const credit = document.getElementById("wallpaper-credit");
+  const photographerLink = document.getElementById("photographer-link");
+  const unsplashLink = document.getElementById("unsplash-link");
+
+  if (!wallpaper || !credit || !photographerLink || !unsplashLink) {
+    return;
+  }
+
+  const imageUrl = payload.image_url_small || payload.image_url;
+
+  const preloadImage = new Image();
+  preloadImage.className = WALLPAPER_PRELOAD_CLASS;
+  preloadImage.loading = "eager";
+  preloadImage.decoding = "async";
+  preloadImage.src = imageUrl;
+
+  preloadImage.onload = () => {
+    wallpaper.style.backgroundImage = `url("${imageUrl}")`;
+  };
+
+  photographerLink.textContent = payload.photographer_name || "Unknown";
+  photographerLink.href = payload.photographer_link || "https://unsplash.com";
+  unsplashLink.href = payload.unsplash_link || "https://unsplash.com";
+  credit.style.display = "inline-flex";
+}
+
+async function fetchDailyWallpaper() {
+  const response = await fetch(WALLPAPER_API_ENDPOINT);
+  if (!response.ok) {
+    throw new Error(`Wallpaper fetch failed with status ${response.status}`);
+  }
+  return response.json();
+}
+
+async function setupDailyWallpaper() {
+  const todayKey = getTodayKey();
+  const cachedDate = localStorage.getItem(WALLPAPER_CACHE_DATE_KEY);
+  const cachedRaw = localStorage.getItem(WALLPAPER_CACHE_KEY);
+
+  if (cachedRaw) {
+    try {
+      const cachedPayload = JSON.parse(cachedRaw);
+      applyWallpaper(cachedPayload);
+    } catch (error) {
+      console.warn("Failed to parse cached wallpaper payload", error);
+    }
+  }
+
+  if (cachedDate === todayKey && cachedRaw) {
+    return;
+  }
+
+  try {
+    const payload = await fetchDailyWallpaper();
+    if (payload.error) {
+      throw new Error(payload.error);
+    }
+
+    applyWallpaper(payload);
+    localStorage.setItem(WALLPAPER_CACHE_KEY, JSON.stringify(payload));
+    localStorage.setItem(WALLPAPER_CACHE_DATE_KEY, todayKey);
+  } catch (error) {
+    console.warn("Unable to refresh daily wallpaper", error);
+  }
+}
 
 
 // Initialize on page load
@@ -83,6 +164,7 @@ document.addEventListener("DOMContentLoaded", function () {
   setupDailyContactGoal();
   setupDashboardViewToggle();
   setupExitReminder();
+  setupDailyWallpaper();
 
   // Default to Today view
 });
