@@ -13,6 +13,20 @@
     <link rel="stylesheet" href="/static/css/terminal.css" />
   </head>
   <body>
+    <div id="wallpaper" class="wallpaper" aria-hidden="true"></div>
+    <div class="wallpaper-overlay" aria-hidden="true"></div>
+    <div id="wallpaper-credit" class="wallpaper-credit" style="display: none">
+      <span>Photo by</span>
+      <a id="photographer-link" href="https://unsplash.com" target="_blank" rel="noopener noreferrer">Unknown</a>
+      <span>on</span>
+      <a id="unsplash-link" href="https://unsplash.com" target="_blank" rel="noopener noreferrer">Unsplash</a>
+    </div>
+
+    <div class="wallpaper-controls" aria-label="Wallpaper controls">
+      <button id="wallpaper-prev" class="wallpaper-control-btn" type="button" title="Previous wallpaper">Previous</button>
+      <button id="wallpaper-next" class="wallpaper-control-btn" type="button" title="Next wallpaper">Next</button>
+    </div>
+
     <div class="container">
       <!-- Navigation Bar -->
       <nav class="terminal-nav">
