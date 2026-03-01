@@ -296,9 +296,12 @@ def get_background_image():
         photographer_link = photo.get('user', {}).get('links', {}).get('html', 'https://unsplash.com')
         unsplash_link = (photo.get('links', {}) or {}).get('html', 'https://unsplash.com')
 
+        urls = photo.get('urls', {}) or {}
+
         return jsonify({
-            'image_url': photo.get('urls', {}).get('full') or photo.get('urls', {}).get('regular'),
-            'image_url_small': photo.get('urls', {}).get('regular') or photo.get('urls', {}).get('small'),
+            'image_url': urls.get('raw') or urls.get('full') or urls.get('regular'),
+            'image_url_full': urls.get('full') or urls.get('regular'),
+            'image_url_small': urls.get('regular') or urls.get('small'),
             'alt_description': photo.get('alt_description') or 'Scenic workspace wallpaper',
             'photographer_name': photographer_name,
             'photographer_link': f"{photographer_link}?utm_source=statusmonkey&utm_medium=referral",

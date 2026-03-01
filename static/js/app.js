@@ -84,8 +84,42 @@ function getTodayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function getWallpaperImageUrl(payload) {
+  if (!payload) {
+    return null;
+  }
+
+  const candidateUrl =
+    payload.image_url ||
+    payload.image_url_full ||
+    payload.image_url_small;
+
+  if (!candidateUrl) {
+    return null;
+  }
+
+  try {
+    const url = new URL(candidateUrl, window.location.origin);
+    if (url.hostname.includes("images.unsplash.com")) {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const targetWidth = Math.min(Math.round(window.innerWidth * dpr * 1.2), 3840);
+      const targetHeight = Math.min(Math.round(window.innerHeight * dpr * 1.2), 2160);
+
+      url.searchParams.set("fm", "jpg");
+      url.searchParams.set("q", "90");
+      url.searchParams.set("fit", "crop");
+      url.searchParams.set("crop", "entropy");
+      url.searchParams.set("w", String(targetWidth));
+      url.searchParams.set("h", String(targetHeight));
+    }
+    return url.toString();
+  } catch (error) {
+    return candidateUrl;
+  }
+}
+
 function applyWallpaper(payload) {
-  if (!payload || !(payload.image_url || payload.image_url_small)) {
+  if (!payload || !(payload.image_url || payload.image_url_full || payload.image_url_small)) {
     return;
   }
 
@@ -98,7 +132,7 @@ function applyWallpaper(payload) {
     return;
   }
 
-  const imageUrl = payload.image_url_small || payload.image_url;
+  const imageUrl = getWallpaperImageUrl(payload);
 
   const preloadImage = new Image();
   preloadImage.className = WALLPAPER_PRELOAD_CLASS;
@@ -135,8 +169,12 @@ function isSameWallpaper(firstPayload, secondPayload) {
     return false;
   }
 
-  const firstImage = firstPayload.image_url_small || firstPayload.image_url;
-  const secondImage = secondPayload.image_url_small || secondPayload.image_url;
+  if (firstPayload.unsplash_link && secondPayload.unsplash_link) {
+    return firstPayload.unsplash_link === secondPayload.unsplash_link;
+  }
+
+  const firstImage = firstPayload.image_url || firstPayload.image_url_full || firstPayload.image_url_small;
+  const secondImage = secondPayload.image_url || secondPayload.image_url_full || secondPayload.image_url_small;
   return firstImage === secondImage;
 }
 
@@ -151,7 +189,7 @@ function loadWallpaperHistory() {
     try {
       const parsedHistory = JSON.parse(rawHistory);
       if (Array.isArray(parsedHistory)) {
-        wallpaperHistory = parsedHistory.filter((entry) => entry && (entry.image_url || entry.image_url_small));
+        wallpaperHistory = parsedHistory.filter((entry) => entry && (entry.image_url || entry.image_url_full || entry.image_url_small));
       }
     } catch (error) {
       console.warn("Failed to parse wallpaper history", error);
@@ -172,7 +210,7 @@ function persistWallpaperHistory() {
 }
 
 function rememberWallpaper(payload) {
-  if (!payload || !(payload.image_url || payload.image_url_small)) {
+  if (!payload || !(payload.image_url || payload.image_url_full || payload.image_url_small)) {
     return;
   }
 
@@ -222,7 +260,7 @@ function getSessionWallpaperOverride() {
 
   try {
     const parsed = JSON.parse(rawOverride);
-    if (parsed && (parsed.image_url || parsed.image_url_small)) {
+    if (parsed && (parsed.image_url || parsed.image_url_full || parsed.image_url_small)) {
       return parsed;
     }
   } catch (error) {
