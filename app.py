@@ -19,11 +19,6 @@ app = Flask(__name__)
 UNSPLASH_ACCESS_KEY = os.getenv("UNSPLASH_ACCESS_KEY")
 UNSPLASH_BACKGROUND_TOPICS = [
     "nature",
-    "minimal",
-    "mountains",
-    "sunrise",
-    "landscape",
-    "calm",
 ]
 
 
