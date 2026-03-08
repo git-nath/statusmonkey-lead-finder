@@ -63,6 +63,25 @@ let wallpaperFavorites = [];
 let currentWallpaperPayload = null;
 
 
+const WALLPAPER_CACHE_KEY = "statusmonkeyDailyWallpaper";
+const WALLPAPER_CACHE_DATE_KEY = "statusmonkeyDailyWallpaperDate";
+const WALLPAPER_API_ENDPOINT = "/api/background-image";
+const WALLPAPER_PRELOAD_CLASS = "wallpaper-preload";
+const WALLPAPER_HISTORY_KEY = "statusmonkeyWallpaperHistory";
+const WALLPAPER_HISTORY_INDEX_KEY = "statusmonkeyWallpaperHistoryIndex";
+const WALLPAPER_SESSION_OVERRIDE_KEY = "statusmonkeyWallpaperSessionOverride";
+const WALLPAPER_HISTORY_LIMIT = 5;
+const WALLPAPER_CACHE_VERSION_KEY = "statusmonkeyWallpaperCacheVersion";
+const WALLPAPER_CACHE_VERSION = "v3-nature-only";
+const WALLPAPER_FAVORITES_KEY = "statusmonkeyWallpaperFavorites";
+const WALLPAPER_FAVORITES_LIMIT = 25;
+
+let wallpaperHistory = [];
+let wallpaperHistoryIndex = -1;
+let wallpaperFavorites = [];
+let currentWallpaperPayload = null;
+
+
 function getStoredItems(key, fallback) {
   const raw = localStorage.getItem(key);
   if (!raw) {
