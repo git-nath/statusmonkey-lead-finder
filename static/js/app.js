@@ -53,13 +53,9 @@ const WALLPAPER_SESSION_OVERRIDE_KEY = "statusmonkeyWallpaperSessionOverride";
 const WALLPAPER_HISTORY_LIMIT = 5;
 const WALLPAPER_CACHE_VERSION_KEY = "statusmonkeyWallpaperCacheVersion";
 const WALLPAPER_CACHE_VERSION = "v3-nature-only";
-const WALLPAPER_FAVORITES_KEY = "statusmonkeyWallpaperFavorites";
-const WALLPAPER_FAVORITES_LIMIT = 25;
 
 let wallpaperHistory = [];
 let wallpaperHistoryIndex = -1;
-let wallpaperFavorites = [];
-let currentWallpaperPayload = null;
 
 
 function getStoredItems(key, fallback) {
@@ -170,8 +166,6 @@ function applyWallpaper(payload) {
   photographerLink.href = payload.photographer_link || "https://unsplash.com";
   unsplashLink.href = payload.unsplash_link || "https://unsplash.com";
   credit.style.display = "inline-flex";
-  currentWallpaperPayload = payload;
-  updateFavoriteButtonState();
 }
 
 function isSameWallpaper(firstPayload, secondPayload) {
@@ -186,95 +180,6 @@ function isSameWallpaper(firstPayload, secondPayload) {
   const firstImage = firstPayload.image_url || firstPayload.image_url_full || firstPayload.image_url_small;
   const secondImage = secondPayload.image_url || secondPayload.image_url_full || secondPayload.image_url_small;
   return firstImage === secondImage;
-}
-
-function loadWallpaperFavorites() {
-  const rawFavorites = localStorage.getItem(WALLPAPER_FAVORITES_KEY);
-  wallpaperFavorites = [];
-
-  if (!rawFavorites) {
-    return;
-  }
-
-  try {
-    const parsedFavorites = JSON.parse(rawFavorites);
-    if (Array.isArray(parsedFavorites)) {
-      wallpaperFavorites = parsedFavorites.filter(
-        (entry) => entry && (entry.image_url || entry.image_url_full || entry.image_url_small)
-      );
-    }
-  } catch (error) {
-    console.warn("Failed to parse wallpaper favorites", error);
-  }
-}
-
-function persistWallpaperFavorites() {
-  localStorage.setItem(WALLPAPER_FAVORITES_KEY, JSON.stringify(wallpaperFavorites));
-}
-
-function isFavoriteWallpaper(payload) {
-  return wallpaperFavorites.some((item) => isSameWallpaper(item, payload));
-}
-
-function updateFavoriteButtonState() {
-  const favoriteButton = document.getElementById("wallpaper-favorite");
-  if (!favoriteButton) {
-    return;
-  }
-
-  const isFavorite = !!currentWallpaperPayload && isFavoriteWallpaper(currentWallpaperPayload);
-  favoriteButton.classList.toggle("is-favorite", isFavorite);
-  favoriteButton.textContent = isFavorite ? "★ Favorited" : "☆ Favorite";
-}
-
-function refreshFavoritesSelect() {
-  const favoritesSelect = document.getElementById("wallpaper-favorites-select");
-  if (!favoritesSelect) {
-    return;
-  }
-
-  const options = ['<option value="">Favorites</option>'];
-  wallpaperFavorites.forEach((item, index) => {
-    const author = item.photographer_name || "Unknown";
-    const label = `${index + 1}. ${author}`;
-    options.push(`<option value="${index}">${label}</option>`);
-  });
-
-  favoritesSelect.innerHTML = options.join("");
-}
-
-function toggleCurrentWallpaperFavorite() {
-  if (!currentWallpaperPayload) {
-    return;
-  }
-
-  const existingIndex = wallpaperFavorites.findIndex((item) =>
-    isSameWallpaper(item, currentWallpaperPayload)
-  );
-
-  if (existingIndex >= 0) {
-    wallpaperFavorites.splice(existingIndex, 1);
-  } else {
-    wallpaperFavorites.unshift(currentWallpaperPayload);
-    if (wallpaperFavorites.length > WALLPAPER_FAVORITES_LIMIT) {
-      wallpaperFavorites = wallpaperFavorites.slice(0, WALLPAPER_FAVORITES_LIMIT);
-    }
-  }
-
-  persistWallpaperFavorites();
-  refreshFavoritesSelect();
-  updateFavoriteButtonState();
-}
-
-function applyFavoriteWallpaper(indexValue) {
-  const index = Number.parseInt(indexValue, 10);
-  if (!Number.isInteger(index) || index < 0 || index >= wallpaperFavorites.length) {
-    return;
-  }
-
-  const payload = wallpaperFavorites[index];
-  rememberWallpaper(payload);
-  applyHistoryWallpaper(wallpaperHistoryIndex, { manual: true });
 }
 
 function loadWallpaperHistory() {
@@ -430,31 +335,19 @@ function showPreviousWallpaper() {
 function setupWallpaperControls() {
   const previousButton = document.getElementById("wallpaper-prev");
   const nextButton = document.getElementById("wallpaper-next");
-  const favoriteButton = document.getElementById("wallpaper-favorite");
-  const favoritesSelect = document.getElementById("wallpaper-favorites-select");
 
-  if (!previousButton || !nextButton || !favoriteButton || !favoritesSelect) {
+  if (!previousButton || !nextButton) {
     return;
   }
 
   previousButton.addEventListener("click", showPreviousWallpaper);
   nextButton.addEventListener("click", showNextWallpaper);
-  favoriteButton.addEventListener("click", toggleCurrentWallpaperFavorite);
-  favoritesSelect.addEventListener("change", (event) => {
-    applyFavoriteWallpaper(event.target.value);
-    event.target.value = "";
-  });
-
   updateWallpaperControls();
-  refreshFavoritesSelect();
-  updateFavoriteButtonState();
 }
 
 
 async function setupDailyWallpaper() {
   loadWallpaperHistory();
-  loadWallpaperFavorites();
-  refreshFavoritesSelect();
 
   const sessionOverride = getSessionWallpaperOverride();
   if (sessionOverride) {
