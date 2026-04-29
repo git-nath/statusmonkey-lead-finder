@@ -1,6 +1,7 @@
 // StatusMonkey Admin Dashboard Logic
 
 const TOP10_PROMPT_KEY = "statusmonkeyTop10Prompt";
+const SAVED_PROMPTS_KEY = "statusmonkeySavedPrompts";
 const EXIT_REMINDER_DISMISSED_KEY = "statusmonkeyExitReminderDismissed";
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -8,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadAdminKeywords();
     loadDatabaseFiles();
     setupTop10PromptEditor();
+    renderPromptList();
     setupExitReminder();
 });
 
@@ -244,6 +246,88 @@ function saveTop10Prompt() {
             : "⚠️ Prompt cleared. Add text to include it in exports.";
     }
     showNotification("✅ Top 10 prompt saved.");
+}
+
+function getSavedPrompts() {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(SAVED_PROMPTS_KEY) || "[]");
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+        return [];
+    }
+}
+
+function setSavedPrompts(prompts) {
+    localStorage.setItem(SAVED_PROMPTS_KEY, JSON.stringify(prompts));
+}
+
+function renderPromptList() {
+    const list = document.getElementById("prompt-list");
+    if (!list) return;
+
+    const prompts = getSavedPrompts();
+    if (!prompts.length) {
+        list.innerHTML = '<p style="color: #94a3b8; font-size: 0.85em; margin: 8px 0;">No saved prompts yet.</p>';
+        return;
+    }
+
+    list.innerHTML = prompts
+        .map((prompt, index) => `
+            <div style="border: 1px solid #475569; border-radius: 8px; padding: 8px; background: rgba(15,23,42,0.45);">
+                <button onclick="loadPromptFromList(${index})" style="width: 100%; text-align: left; background: transparent; border: none; color: #e2e8f0; cursor: pointer; font-weight: 600;">${prompt.name}</button>
+                <div style="font-size: 0.75em; color: #94a3b8; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${prompt.text.replace(/</g, "&lt;")}</div>
+                <button onclick="deletePromptFromList(${index})" style="margin-top: 6px; font-size: 0.75em; background: transparent; border: 1px solid #ef4444; color: #ef4444; border-radius: 6px; cursor: pointer; padding: 4px 8px;">Delete</button>
+            </div>
+        `)
+        .join("");
+}
+
+function addPromptToList() {
+    const nameInput = document.getElementById("prompt-name-input");
+    const promptInput = document.getElementById("top10-prompt-input");
+    if (!nameInput || !promptInput) return;
+
+    const name = nameInput.value.trim();
+    const text = promptInput.value.trim();
+
+    if (!name) {
+        showError("Please enter a prompt name");
+        return;
+    }
+
+    if (!text) {
+        showError("Please add prompt text before saving to list");
+        return;
+    }
+
+    const prompts = getSavedPrompts();
+    prompts.unshift({ name, text, createdAt: new Date().toISOString() });
+    setSavedPrompts(prompts.slice(0, 30));
+    nameInput.value = "";
+    renderPromptList();
+    showNotification("✅ Prompt added to saved list.");
+}
+
+function loadPromptFromList(index) {
+    const prompts = getSavedPrompts();
+    const selected = prompts[index];
+    if (!selected) return;
+
+    const input = document.getElementById("top10-prompt-input");
+    const status = document.getElementById("top10-prompt-status");
+    if (!input) return;
+
+    input.value = selected.text;
+    if (status) {
+        status.textContent = `Loaded prompt: ${selected.name}`;
+    }
+}
+
+function deletePromptFromList(index) {
+    const prompts = getSavedPrompts();
+    prompts.splice(index, 1);
+    setSavedPrompts(prompts);
+    renderPromptList();
 }
 
 function setupExitReminder() {

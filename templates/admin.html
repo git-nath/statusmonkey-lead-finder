@@ -81,18 +81,30 @@
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
               <div>
                   <h2 style="color: #a5b4fc; margin-bottom: 6px;">🧠 Top 10 Copy Prompt Editor</h2>
-                  <p style="margin: 0; color: #cbd5f5; font-size: 0.9em;">This prompt will appear above every Top 10 "Copy Full Posts + Prompt" export.</p>
+                  <p style="margin: 0; color: #cbd5f5; font-size: 0.9em;">Save multiple prompts on the left. Click one to load it into the editor.</p>
               </div>
               <button class="btn btn-primary" onclick="saveTop10Prompt()" style="background: rgba(79, 70, 229, 0.3); border-color: #6366f1; color: #e0e7ff;">
                   💾 Save Prompt
               </button>
           </div>
-          <textarea
-              id="top10-prompt-input"
-              placeholder="Type your prompt here..."
-              style="width: 100%; min-height: 60vh; padding: 16px; border-radius: 10px; border: 1px solid #30363d; background: #0d1117; color: #e6edf3; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.95em; line-height: 1.5; box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.25);"
-          ></textarea>
-          <p id="top10-prompt-status" style="margin-top: 12px; font-size: 0.85em; color: #9ca3af;">Tip: Save updates here, then use the new Top 10 copy button to include this prompt.</p>
+          <div style="display: grid; grid-template-columns: 280px 1fr; gap: 16px; align-items: start;">
+              <aside style="border: 1px solid #334155; border-radius: 10px; background: rgba(15, 23, 42, 0.55); padding: 12px; min-height: 60vh;">
+                  <h3 style="margin: 0 0 10px 0; color: #c7d2fe; font-size: 0.95em;">Saved Prompts</h3>
+                  <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                      <input id="prompt-name-input" type="text" placeholder="Prompt name" style="flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: #e2e8f0;" />
+                      <button class="btn btn-secondary" onclick="addPromptToList()" style="padding: 8px 10px;">➕ Add</button>
+                  </div>
+                  <div id="prompt-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+              </aside>
+              <div>
+                  <textarea
+                      id="top10-prompt-input"
+                      placeholder="Type your prompt here..."
+                      style="width: 100%; min-height: 60vh; padding: 16px; border-radius: 10px; border: 1px solid #30363d; background: #0d1117; color: #e6edf3; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.95em; line-height: 1.5; box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.25);"
+                  ></textarea>
+                  <p id="top10-prompt-status" style="margin-top: 12px; font-size: 0.85em; color: #9ca3af;">Tip: Save updates here, then use the new Top 10 copy button to include this prompt.</p>
+              </div>
+          </div>
       </section>
     </div>
 
