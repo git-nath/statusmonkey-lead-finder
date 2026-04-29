@@ -245,7 +245,17 @@ function saveTop10Prompt() {
             ? "✅ Prompt saved and ready for Top 10 exports."
             : "⚠️ Prompt cleared. Add text to include it in exports.";
     }
+    renderPromptList();
     showNotification("✅ Top 10 prompt saved.");
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
 }
 
 function getSavedPrompts() {
@@ -266,19 +276,33 @@ function renderPromptList() {
     if (!list) return;
 
     const prompts = getSavedPrompts();
+    const activePrompt = localStorage.getItem(TOP10_PROMPT_KEY) || "";
+
     if (!prompts.length) {
         list.innerHTML = '<p style="color: #94a3b8; font-size: 0.85em; margin: 8px 0;">No saved prompts yet.</p>';
         return;
     }
 
     list.innerHTML = prompts
-        .map((prompt, index) => `
-            <div style="border: 1px solid #475569; border-radius: 8px; padding: 8px; background: rgba(15,23,42,0.45);">
-                <button onclick="loadPromptFromList(${index})" style="width: 100%; text-align: left; background: transparent; border: none; color: #e2e8f0; cursor: pointer; font-weight: 600;">${prompt.name}</button>
-                <div style="font-size: 0.75em; color: #94a3b8; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${prompt.text.replace(/</g, "&lt;")}</div>
-                <button onclick="deletePromptFromList(${index})" style="margin-top: 6px; font-size: 0.75em; background: transparent; border: 1px solid #ef4444; color: #ef4444; border-radius: 6px; cursor: pointer; padding: 4px 8px;">Delete</button>
-            </div>
-        `)
+        .map((prompt, index) => {
+            const isActive = prompt.text === activePrompt;
+            const cardBorder = isActive ? "#818cf8" : "#475569";
+            const cardBackground = isActive ? "rgba(79,70,229,0.22)" : "rgba(15,23,42,0.45)";
+            const activeBadge = isActive
+                ? '<span style="font-size: 0.7em; color: #c7d2fe; border: 1px solid #818cf8; border-radius: 999px; padding: 2px 8px;">Active</span>'
+                : "";
+
+            return `
+                <div style="border: 1px solid ${cardBorder}; border-radius: 8px; padding: 8px; background: ${cardBackground};">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                        <button onclick="loadPromptFromList(${index})" style="width: 100%; text-align: left; background: transparent; border: none; color: #e2e8f0; cursor: pointer; font-weight: 600;">${escapeHtml(prompt.name)}</button>
+                        ${activeBadge}
+                    </div>
+                    <div style="font-size: 0.75em; color: #94a3b8; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(prompt.text)}</div>
+                    <button onclick="deletePromptFromList(${index})" style="margin-top: 6px; font-size: 0.75em; background: transparent; border: 1px solid #ef4444; color: #ef4444; border-radius: 6px; cursor: pointer; padding: 4px 8px;">Delete</button>
+                </div>
+            `;
+        })
         .join("");
 }
 
@@ -318,9 +342,11 @@ function loadPromptFromList(index) {
     if (!input) return;
 
     input.value = selected.text;
+    localStorage.setItem(TOP10_PROMPT_KEY, selected.text);
     if (status) {
-        status.textContent = `Loaded prompt: ${selected.name}`;
+        status.textContent = `✅ Active prompt: ${selected.name}`;
     }
+    renderPromptList();
 }
 
 function deletePromptFromList(index) {
