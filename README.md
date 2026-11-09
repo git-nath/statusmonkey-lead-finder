@@ -33,7 +33,7 @@ Even a lightweight uptime check is enough to catch silent outages early instead 
 --------------------------------
 Important:
 
-❌ I don’t like this line:  
+ I don’t like this line:  
 “This is a small tool I’ve been using for that:”
 I built StatusMonkey 
 That’s what StatusMonkey focuses on — i don't like this line cuz 
@@ -41,7 +41,7 @@ we are suggesting a cool tool not advertising okay
 just make it casualy suggest a cool tool not marketing 
 One thing that helped me or us. 
 
-✅ Keep it **straight to the point**, clean, and natural.
+ Keep it **straight to the point**, clean, and natural.
 
 ---------------
 
@@ -54,18 +54,18 @@ Perfect — thanks for the full export. I’ll do this exactly in your format, n
 
 I’ll go lead by lead, and for each one I’ll clearly say:
 
-✅ Is this a good place to market StatusMonkey or not
+Is this a good place to market StatusMonkey or not
 
-👉 Who to reply to (username + their comment)
+Who to reply to (username + their comment)
 
-✍️ Exact reply you can post
+ Exact reply you can post
 
-🚫 If you already replied, I’ll say so and quote it
+ If you already replied, I’ll say so and quote it
 
-✅ LEAD REVIEW & ACTION PLAN
-🔥 LEAD #1 — r/startups (Ship fast / fail fast)
+ LEAD REVIEW & ACTION PLAN
+ LEAD #1 — r/startups (Ship fast / fail fast)
 
-Verdict: ❌ NOT a lead
+Verdict:  NOT a lead
 
 Why
 
@@ -81,15 +81,15 @@ Do not reply with StatusMonkey
 
 You can reply with general advice, but no link
 
-👉 SKIP for marketing
+ SKIP for marketing
 
-🔥 LEAD #2 — r/selfhosted (n8n on Oracle Free Tier)
+ LEAD #2 — r/selfhosted (n8n on Oracle Free Tier)
 
-Verdict: ✅ STRONG lead
+Verdict: STRONG lead
 
 Best place to reply
 
-👉 Reply to: u/Ruborsito
+Reply to: u/Ruborsito
 Original comment:
 
 i run it in my homeserver under a free ngrok link running in a secundary tty
@@ -104,8 +104,8 @@ Always-on assumption
 
 Monitoring fits naturally
 
-✅ You have NOT replied yet
-✍️ Post this reply
+ You have NOT replied yet
+ Post this reply
 That’s a solid setup.
 
 One thing that’s bitten me before with home servers + ngrok is not noticing when the tunnel drops or the service quietly goes down.
@@ -114,9 +114,9 @@ Having a really lightweight external uptime check helps catch that early without
 
 Not required of course, but it saves you from finding out via broken automations.
 
-🟡 LEAD #3 — r/SideProject (Minimal YouTube app)
+ LEAD #3 — r/SideProject (Minimal YouTube app)
 
-Verdict: ❌ NOT a lead
+Verdict:  NOT a lead
 
 Why
 
@@ -126,11 +126,11 @@ No backend / uptime concern
 
 No infra discussion
 
-👉 SKIP
+ SKIP
 
-🟡 LEAD #4 — r/SideProject (UFC Pick’em app)
+ LEAD #4 — r/SideProject (UFC Pick’em app)
 
-Verdict: ❌ NOT a lead
+Verdict:  NOT a lead
 
 Why
 
@@ -140,11 +140,11 @@ Feedback-focused
 
 Monitoring mention would feel random
 
-👉 SKIP
+ SKIP
 
-🔥 LEAD #5 — r/SaaS (Vercel infra costs)
+LEAD #5 — r/SaaS (Vercel infra costs)
 
-Verdict: ✅ ALREADY HANDLED
+Verdict:  ALREADY HANDLED
 
 You already replied as u/Many_String_2847
 
@@ -157,15 +157,15 @@ One thing I’ve seen repeatedly is founders optimizing infra costs but forgetti
 Even simple uptime checks + clear alerts go a long way once revenue is involved.
 
 https://statusmonkey.co/poc
-✅ This was excellent
-✅ Perfect tone
-✅ Zero changes needed
+ This was excellent
+Perfect tone
+Zero changes needed
 
-👉 DO NOT reply again
+ DO NOT reply again
 
-❌ LEAD #6 — r/SaaS (Follow-ups & reminders)
+ LEAD #6 — r/SaaS (Follow-ups & reminders)
 
-Verdict: ❌ NOT a lead
+Verdict:  NOT a lead
 
 Why
 
@@ -175,11 +175,10 @@ No uptime / infra relevance
 
 Linking StatusMonkey would be off-topic
 
-👉 SKIP
+ SKIP
+LEAD #7 — r/SaaS (Build in public / vibecoded)
 
-🟡 LEAD #7 — r/SaaS (Build in public / vibecoded)
-
-Verdict: ❌ NOT a lead
+Verdict:  NOT a lead
 
 Why
 
@@ -189,11 +188,11 @@ Validation discussion
 
 Another user already got called out for promo
 
-👉 SKIP (mods are watching here)
+ SKIP (mods are watching here)
 
-🟡 LEAD #8 — r/SideProject (Hourly rate calculator)
+ LEAD #8 — r/SideProject (Hourly rate calculator)
 
-Verdict: ❌ NOT a lead
+Verdict:  NOT a lead
 
 Why
 
@@ -201,11 +200,11 @@ Pricing / freelancing
 
 No backend reliability angle
 
-👉 SKIP
+ SKIP
 
-🟡 LEAD #9 — r/SideProject (Cross-language tool)
+ LEAD #9 — r/SideProject (Cross-language tool)
 
-Verdict: ❌ NOT a lead
+Verdict:  NOT a lead
 
 Why
 
@@ -215,11 +214,11 @@ UX / integrations discussion
 
 Monitoring not relevant yet
 
-👉 SKIP
+ SKIP
 
-❌ LEAD #10 — r/startups (Inactive cofounders)
+ LEAD #10 — r/startups (Inactive cofounders)
 
-Verdict: ❌ NOT a lead
+Verdict:  NOT a lead
 
 Why
 
@@ -229,18 +228,18 @@ Legal / equity / ops
 
 No technical uptime angle
 
-👉 SKIP
+ SKIP
 
-✅ FINAL SUMMARY (WHAT TO DO NOW)
-🔥 ACT NOW
+ FINAL SUMMARY (WHAT TO DO NOW)
+ ACT NOW
 
 LEAD #2 (r/selfhosted) → reply to u/Ruborsito
 
-🧠 ALREADY DONE (GOOD JOB)
+ ALREADY DONE (GOOD JOB)
 
 LEAD #5 (r/SaaS) → already replied perfectly
 
-❌ SKIP EVERYTHING ELSE
+ SKIP EVERYTHING ELSE
 
 Leads #1, #3, #4, #6–#10 are not natural fits
 
@@ -256,4 +255,4 @@ Or write 2–3 variant replies (ultra-short, technical, casual)
 
 Or help you decide when to reply to posts vs comments
 
-Just say 👍
+Just say 
