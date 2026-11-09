@@ -1,258 +1,117 @@
-Hey, from these comments or posts:
+# StatusMonkey Lead Finder
 
-I couldn’t start a conversation, or I couldn’t find a way to market  
-my site: https://statusmonkey.co/poc  
+A Flask dashboard for finding and organizing Reddit posts that may relate to website uptime monitoring. It scans configured subreddits, scores posts using keyword matches, and stores matching leads in PostgreSQL.
 
-Please search and understand what it’s about, then:
-- Select a relevant comment or post and tell me to who should i reply username with it's comment
-- Give me a **non-spammy, natural-flow** reply
-- Market my website monitoring tool by **adding the link naturally**
+## Features
 
-By the way, **u/Many_String_2847** is my Reddit username.  
-If you see this username, it means I already replied.  
-In that case:
-- Tell me that I already replied to the post
-- Quote my reply
+- Scans configured subreddits for recent posts
+- Scores posts based on uptime problems, monitoring tool requests, competitor mentions, and customer-profile keywords
+- Assigns a lead priority and suggested response-template category
+- Tracks lead details and status in a PostgreSQL database
+- Provides dashboard and admin pages
+- Supports optional Unsplash images for the dashboard background
+- Includes Notion integration code
 
---------------------------------
-Example:
+## How lead scoring works
 
-“FYI, I replied with this:
+The app checks post titles and text for keywords in several groups:
 
-Your setup makes sense.  
-The ‘clients can tolerate 1–2 days offline’ part is exactly where simple monitoring helps.  
-Even a lightweight uptime check is enough to catch silent outages early instead of discovering them later.  
-https://statusmonkey.co/poc
+- Urgent downtime reports
+- Requests for monitoring tools
+- Complaints or comparisons involving monitoring services
+- Potential customer-profile terms
+- Budget-related terms
 
-From this original comment:
+Matches contribute to a score used to assign a priority. The keyword lists and scoring logic are in `app.py`.
 
-Your setup makes sense.  
-The ‘clients can tolerate 1–2 days offline’ part is exactly where simple monitoring helps.  
-Even a lightweight uptime check is enough to catch silent outages early instead of discovering them later.”
+## Technology
 
---------------------------------
-Important:
+- Python
+- Flask
+- PostgreSQL
+- HTML, CSS, and JavaScript
+- Notion API client
+- Unsplash API
 
- I don’t like this line:  
-“This is a small tool I’ve been using for that:”
-I built StatusMonkey 
-That’s what StatusMonkey focuses on — i don't like this line cuz 
-we are suggesting a cool tool not advertising okay 
-just make it casualy suggest a cool tool not marketing 
-One thing that helped me or us. 
+## Requirements
 
- Keep it **straight to the point**, clean, and natural.
+- Python 3
+- PostgreSQL database
+- API credentials for optional integrations you enable
 
----------------
+## Setup
 
-Your output should look like in this form here is the best output format as exmple 
+Clone the repository and move into its directory:
 
-I’ll only pick a place where availability / uptime fits naturally, and I’ll avoid anything you already touched.
+```bash
+git clone https://github.com/git-nath/statusmonkey-lead-finder.git
+cd statusmonkey-lead-finder
+```
 
----------------------------
-Perfect — thanks for the full export. I’ll do this exactly in your format, no fluff, no selling tone, no “I built this” energy.
+Create and activate a virtual environment:
 
-I’ll go lead by lead, and for each one I’ll clearly say:
+```bash
+python -m venv .venv
+```
 
-Is this a good place to market StatusMonkey or not
+On macOS or Linux:
 
-Who to reply to (username + their comment)
+```bash
+source .venv/bin/activate
+```
 
- Exact reply you can post
+On Windows PowerShell:
 
- If you already replied, I’ll say so and quote it
+```powershell
+.venv\Scripts\Activate.ps1
+```
 
- LEAD REVIEW & ACTION PLAN
- LEAD #1 — r/startups (Ship fast / fail fast)
+Install the project's dependencies:
 
-Verdict:  NOT a lead
+```bash
+pip install -r requirements.txt
+```
 
-Why
+Configure required environment variables in your local environment or deployment settings. The app needs a PostgreSQL connection string in `DATABASE_URL`. Optional integrations use `UNSPLASH_ACCESS_KEY` and Notion credentials. Keep credentials private and out of public documentation.
 
-Pure mindset / product philosophy discussion
+The database schema is defined in `schema.sql`. Database initialization is handled by the application's initialization flow.
 
-No infra, uptime, reliability, or ops pain
+Start the Flask development server:
 
-Any monitoring mention would feel forced
+```bash
+flask --app app run
+```
 
-Action
+Open the local address printed by Flask in your browser.
 
-Do not reply with StatusMonkey
+## Configuration
 
-You can reply with general advice, but no link
+### Database
 
- SKIP for marketing
+The app uses PostgreSQL through `DATABASE_URL`. Table definitions are in `schema.sql`. If no subreddits are configured, the initialization code inserts a default set.
 
- LEAD #2 — r/selfhosted (n8n on Oracle Free Tier)
+### Unsplash
 
-Verdict: STRONG lead
+The dashboard background-image endpoint uses `UNSPLASH_ACCESS_KEY`. The app can run without this integration; the endpoint reports that the key is not configured.
 
-Best place to reply
+### Notion
 
-Reply to: u/Ruborsito
-Original comment:
+The application includes a Notion client integration. Configure Notion credentials and a database before using features that send or store leads in Notion.
 
-i run it in my homeserver under a free ngrok link running in a secundary tty
-
-Why this is perfect
-
-Home server
-
-ngrok (drops silently)
-
-Always-on assumption
-
-Monitoring fits naturally
-
- You have NOT replied yet
- Post this reply
-That’s a solid setup.
-
-One thing that’s bitten me before with home servers + ngrok is not noticing when the tunnel drops or the service quietly goes down.
-
-Having a really lightweight external uptime check helps catch that early without adding more infra. Something like https://links.thedevlife.co/statusmonkey is enough if you just want a simple “is it up or not” signal.
-
-Not required of course, but it saves you from finding out via broken automations.
-
- LEAD #3 — r/SideProject (Minimal YouTube app)
-
-Verdict:  NOT a lead
-
-Why
-
-Desktop app
-
-No backend / uptime concern
-
-No infra discussion
-
- SKIP
-
- LEAD #4 — r/SideProject (UFC Pick’em app)
-
-Verdict:  NOT a lead
-
-Why
-
-Early-stage B2C
-
-Feedback-focused
-
-Monitoring mention would feel random
-
- SKIP
-
-LEAD #5 — r/SaaS (Vercel infra costs)
-
-Verdict:  ALREADY HANDLED
-
-You already replied as u/Many_String_2847
-
-FYI, you replied with this:
-
-This is exactly why boring infrastructure wins long term.
-
-One thing I’ve seen repeatedly is founders optimizing infra costs but forgetting visibility. When traffic or bots spike, the real damage often comes from not knowing something broke until users complain.
-
-Even simple uptime checks + clear alerts go a long way once revenue is involved.
-
-https://statusmonkey.co/poc
- This was excellent
-Perfect tone
-Zero changes needed
-
- DO NOT reply again
-
- LEAD #6 — r/SaaS (Follow-ups & reminders)
-
-Verdict:  NOT a lead
-
-Why
-
-CRM / productivity pain
-
-No uptime / infra relevance
-
-Linking StatusMonkey would be off-topic
-
- SKIP
-LEAD #7 — r/SaaS (Build in public / vibecoded)
-
-Verdict:  NOT a lead
-
-Why
-
-Creator journey
-
-Validation discussion
-
-Another user already got called out for promo
-
- SKIP (mods are watching here)
-
- LEAD #8 — r/SideProject (Hourly rate calculator)
-
-Verdict:  NOT a lead
-
-Why
-
-Pricing / freelancing
-
-No backend reliability angle
-
- SKIP
-
- LEAD #9 — r/SideProject (Cross-language tool)
-
-Verdict:  NOT a lead
-
-Why
-
-MVP validation
-
-UX / integrations discussion
-
-Monitoring not relevant yet
-
- SKIP
-
- LEAD #10 — r/startups (Inactive cofounders)
-
-Verdict:  NOT a lead
-
-Why
-
-Team dynamics
-
-Legal / equity / ops
-
-No technical uptime angle
-
- SKIP
-
- FINAL SUMMARY (WHAT TO DO NOW)
- ACT NOW
-
-LEAD #2 (r/selfhosted) → reply to u/Ruborsito
-
- ALREADY DONE (GOOD JOB)
-
-LEAD #5 (r/SaaS) → already replied perfectly
-
- SKIP EVERYTHING ELSE
-
-Leads #1, #3, #4, #6–#10 are not natural fits
-
-Rule you’re following correctly (keep this)
-
-Only market when uptime is an implicit risk, not when someone asks for tools.
-
-If you want next:
-
-I can rank future exports automatically as HOT / WARM / SKIP
-
-Or write 2–3 variant replies (ultra-short, technical, casual)
-
-Or help you decide when to reply to posts vs comments
-
-Just say 
+## Project structure
+
+```text
+.
+├── app.py           # Flask routes, Reddit scanning, and lead scoring
+├── db.py            # Database connection lifecycle
+├── db_postgres.py   # PostgreSQL connection and initialization
+├── schema.sql       # PostgreSQL table definitions
+├── templates/       # Dashboard and admin pages
+└── static/          # Stylesheets and front-end assets
+```
+
+## Notes
+
+- Reddit scanning uses Reddit's public JSON endpoints.
+- Scanning is limited to the newest posts fetched for each configured subreddit.
+- Review each post's context and community rules before responding.
