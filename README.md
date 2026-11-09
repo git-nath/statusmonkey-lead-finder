@@ -2,6 +2,16 @@
 
 A Flask dashboard for finding and organizing Reddit posts that may relate to website uptime monitoring. It scans configured subreddits, scores posts using keyword matches, and stores matching leads in PostgreSQL.
 
+## Screenshots
+
+![StatusMonkey screenshot 1](1.png)
+
+![StatusMonkey screenshot 2](2.png)
+
+![StatusMonkey screenshot 3](3.png)
+
+![StatusMonkey screenshot 4](4.png)
+
 ## Features
 
 - Scans configured subreddits for recent posts
